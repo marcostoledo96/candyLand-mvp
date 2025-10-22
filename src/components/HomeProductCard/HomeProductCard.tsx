@@ -1,13 +1,13 @@
 import React from "react";
-import styles from "./ProductCard.module.css";
+import styles from "./HomeProductCard.module.css";
 
-interface ProductCardProps {
+interface HomeProductCardProps {
   img: string;
   hoverImg: string;
   title: string;
 }
 
-const ProductCard: React.FC<ProductCardProps> = ({ img, hoverImg, title }) => {
+const HomeProductCard: React.FC<HomeProductCardProps> = ({ img, hoverImg, title }) => {
   return (
     <div className={styles.producto}>
       <div className={styles.imagenHover}>
@@ -19,4 +19,4 @@ const ProductCard: React.FC<ProductCardProps> = ({ img, hoverImg, title }) => {
   );
 };
 
-export default ProductCard;
+export default HomeProductCard;
