@@ -1,0 +1,21 @@
+.productosCandy {
+  padding: 50px 20px;
+  background-color: white;
+  text-align: center;
+  font-family: 'Oswald', sans-serif;
+}
+
+.tituloProductos {
+  font-size: 2rem;
+  margin-bottom: 30px;
+  color: #ff3399;
+}
+
+.productosFlex {
+ display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 40px;
+  max-width: 1200px;
+  margin: 0 auto;
+}
