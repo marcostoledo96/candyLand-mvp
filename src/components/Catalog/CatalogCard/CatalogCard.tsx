@@ -1,4 +1,6 @@
 import React from "react";
+import { useNavigate } from "react-router-dom";
+import { useCart } from "../../../context/CartContext";
 import styles from "./Catalog.module.css";
 
 export interface Product {
@@ -12,10 +14,22 @@ export interface Product {
 
 interface Props {
   product: Product;
-  onAddToCart?: (id: number) => void;
 }
 
-const CatalogCard: React.FC<Props> = ({ product, onAddToCart }) => {
+const CatalogCard: React.FC<Props> = ({ product }) => {
+  const { addToCart, cart } = useCart();
+  const navigate = useNavigate();
+
+  const isInCart = cart.some((item) => item.id === product.id);
+
+  const handleClick = () => {
+    if (isInCart) {
+      navigate("/carrito");
+    } else {
+      addToCart(product);
+    }
+  };
+
   return (
     <div className={styles.card}>
       <div className={styles.imageWrapper}>
@@ -25,10 +39,10 @@ const CatalogCard: React.FC<Props> = ({ product, onAddToCart }) => {
       <p className={styles.description}>{product.description}</p>
       <p className={styles.price}>${product.price}</p>
       <button
-        className={styles.addButton}
-        onClick={() => onAddToCart && onAddToCart(product.id)}
+        className={`${styles.addButton} ${isInCart ? styles.inCart : ""}`}
+        onClick={handleClick}
       >
-        Agregar al carrito
+        {isInCart ? "Ir al carrito" : "Agregar al carrito"}
       </button>
     </div>
   );

@@ -53,3 +53,28 @@
 .addButton:hover {
   background-color: #e52e85;
 }
+
+.inCart {
+  background-color: #bbb;  /* gris claro cuando ya está en el carrito */
+  color: #fff;
+}
+
+.inCart:hover {
+  background-color: #999;
+}
+
+@keyframes addedPulse {
+  0% {
+    transform: scale(1);
+  }
+  50% {
+    transform: scale(1.08);
+  }
+  100% {
+    transform: scale(1);
+  }
+}
+
+.addButton:active {
+  animation: addedPulse 0.3s ease;
+}

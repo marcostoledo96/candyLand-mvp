@@ -1,0 +1,144 @@
+.container {
+  max-width: 850px;
+  margin: 3rem auto;
+  background-color: #fff6e9;
+  border-radius: 12px;
+  padding: 30px;
+  box-shadow: 0 4px 15px rgba(0, 0, 0, 0.05);
+  font-family: "Oswald", sans-serif;
+}
+
+h2 {
+  text-align: center;
+  color: #ec6cac;
+  margin-bottom: 25px;
+}
+
+.items {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
+.item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  background: white;
+  border-radius: 10px;
+  padding: 15px 20px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
+}
+
+.left {
+  display: flex;
+  align-items: center;
+  gap: 15px;
+}
+
+.item img {
+  width: 70px;
+  height: 70px;
+  border-radius: 8px;
+  object-fit: cover;
+}
+
+.details h4 {
+  margin: 0;
+  color: #333;
+}
+
+.details p {
+  margin: 4px 0;
+  color: #666;
+}
+
+/* --- Cantidad --- */
+.quantityControl {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-top: 5px;
+}
+
+.quantityControl button {
+  background-color: #ec6cac;
+  color: white;
+  border: none;
+  padding: 4px 10px;
+  border-radius: 4px;
+  cursor: pointer;
+  font-weight: bold;
+  transition: all 0.3s ease;
+}
+
+.quantityControl button:hover {
+  background-color: #d95898;
+}
+
+.quantityControl span {
+  font-weight: bold;
+  color: #333;
+}
+
+/* --- Botones --- */
+.removeBtn {
+  background-color: transparent;
+  border: 1px solid #ec6cac;
+  color: #ec6cac;
+  padding: 5px 12px;
+  border-radius: 6px;
+  cursor: pointer;
+  font-weight: 600;
+  transition: all 0.3s ease;
+  width: 200px;
+}
+
+.removeBtn:hover {
+  background-color: #ec6cac;
+  color: white;
+}
+
+.summary {
+  margin-top: 30px;
+  text-align: right;
+}
+
+.summary p {
+  font-size: 1.2rem;
+  color: #333;
+}
+
+.actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 15px;
+  margin-top: 10px;
+}
+
+.confirmBtn,
+.backBtn {
+  background-color: #ec6cac;
+  color: white;
+  border: none;
+  padding: 12px 20px;
+  border-radius: 8px;
+  font-size: 1rem;
+  font-weight: bold;
+  cursor: pointer;
+  transition: background-color 0.3s ease;
+}
+
+.confirmBtn:hover {
+  background-color: #d95898;
+}
+
+.backBtn {
+  background-color: #fff;
+  color: #ec6cac;
+  border: 2px solid #ec6cac;
+}
+
+.backBtn:hover {
+  background-color: #ffe5ef;
+}

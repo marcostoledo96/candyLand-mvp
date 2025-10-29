@@ -2,8 +2,10 @@ import React, { useState, useEffect } from "react";
 import { Product } from "../../components/Catalog/CatalogCard/CatalogCard";
 import CatalogCard from "../../components/Catalog/CatalogCard/CatalogCard";
 import styles from "./CatalogPage.module.css";
+import { useCart } from "../../context/CartContext";
 
 const CatalogPage = () => {
+  const { addToCart } = useCart();
   const [products, setProducts] = useState<Product[]>([]);
   const [searchTerm, setSearchTerm] = useState("");
   const [selectedCategory, setSelectedCategory] = useState("Todos");
@@ -117,7 +119,7 @@ const CatalogPage = () => {
           <p className={styles.loader}>Cargando productos...</p>
         ) : (
           filteredProducts.slice(0, visibleProducts).map((product) => (
-            <CatalogCard key={product.id} product={product} />
+            <CatalogCard key={product.id} product={product}  onAddToCart={() => addToCart(product)}/>
           ))
         )}
 

@@ -54,6 +54,17 @@
   color: #f06292;
 }
 
+.cartBadge {
+  background-color: #ec6cac;
+  color: white;
+  border-radius: 50%;
+  font-size: 12px;
+  padding: 3px 7px;
+  margin-left: 6px;
+  vertical-align: middle;
+}
+
+
 /* 📱 Responsive */
 @media (max-width: 768px) {
   .logoNav {
