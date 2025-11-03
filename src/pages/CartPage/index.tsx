@@ -24,7 +24,7 @@ const CartPage = () => {
         {cart.map((item) => (
           <div key={item.id} className={styles.item}>
             <div className={styles.left}>
-              <img src={item.image} alt={item.title} />
+              <img src={item.image} alt={item.title} loading="lazy" decoding="async" />
               <div className={styles.details}>
                 <h4>{item.title}</h4>
                 <p>${item.price}</p>

@@ -3,6 +3,7 @@ import { Product } from "../../components/Catalog/CatalogCard/CatalogCard";
 import CatalogCard from "../../components/Catalog/CatalogCard/CatalogCard";
 import styles from "./CatalogPage.module.css";
 import { useCart } from "../../context/CartContext";
+import { fetchProducts, ApiProduct } from "../../lib/api";
 
 const CatalogPage = () => {
   const { addToCart } = useCart();
@@ -20,7 +21,7 @@ const CatalogPage = () => {
     setLoadingMore(true);
 
     // Simula un delay como si pidiera más al backend
-    setTimeout(() => {
+    setTimeout(() => { return; /* disabled mock; usando backend */
       setVisibleProducts((prev) => prev + 10);
       setLoadingMore(false);
     }, 1500);
@@ -71,6 +72,38 @@ const CatalogPage = () => {
     }, 2000);
   }, []);
   
+  // Cargar productos desde backend
+  useEffect(() => {
+    let mounted = true;
+    async function load() {
+      try {
+        setLoading(true);
+        const data: ApiProduct[] = await fetchProducts();
+        if (!mounted) return;
+        const normalizeImageUrl = (u?: string | null) => {
+          const s = String(u || '').trim();
+          if (!s) return '/src/assets/img/dulce1.jpg';
+          return s.startsWith('/img/') ? `/src/assets${s}` : s;
+        };
+        const mapped: Product[] = data.map((p) => ({
+          id: p.id,
+          title: p.title,
+          description: p.description || "",
+          price: Math.round((p.priceCents || 0) / 100),
+          image: normalizeImageUrl(p.image),
+          category: p.category || "Otros",
+        }));
+        setProducts(mapped);
+      } catch (e) {
+        console.error(e);
+      } finally {
+        if (mounted) setLoading(false);
+      }
+    }
+    load();
+    return () => { mounted = false; };
+  }, []);
+
   // Filtrado desde frontend
   const filteredProducts = products.filter((product) => {
     return (
@@ -119,7 +152,7 @@ const CatalogPage = () => {
           <p className={styles.loader}>Cargando productos...</p>
         ) : (
           filteredProducts.slice(0, visibleProducts).map((product) => (
-            <CatalogCard key={product.id} product={product}  onAddToCart={() => addToCart(product)}/>
+            <CatalogCard key={product.id} product={product} />
           ))
         )}
 
@@ -130,7 +163,7 @@ const CatalogPage = () => {
 
         {/* Mensaje si ya no hay más */}
         {!loadingMore && visibleProducts >= filteredProducts.length && (
-          <p className={styles.endMessage}>No hay más productos para mostrar 😊</p>
+          <p className={styles.endMessage}>Cargando productos... 😊</p>
         )}
       </section>
 

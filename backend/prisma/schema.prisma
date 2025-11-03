@@ -1,0 +1,105 @@
+// Prisma schema for CandyLand
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+model Category {
+  id        Int       @id @default(autoincrement())
+  name      String    @unique
+  products  Product[]
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+}
+
+model Product {
+  id          Int       @id @default(autoincrement())
+  title       String
+  description String?
+  priceCents  Int
+  image       String?
+  categoryId  Int
+  category    Category  @relation(fields: [categoryId], references: [id])
+  cartItems   CartItem[]
+  orderItems  OrderItem[]
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+
+  @@index([title])
+}
+
+model Cart {
+  id        String     @id @default(uuid())
+  items     CartItem[]
+  customerId Int?
+  customer   Customer? @relation(fields: [customerId], references: [id])
+  paymentMethod String?
+  createdAt DateTime   @default(now())
+  updatedAt DateTime   @updatedAt
+}
+
+model CartItem {
+  id        Int      @id @default(autoincrement())
+  cartId    String
+  cart      Cart     @relation(fields: [cartId], references: [id], onDelete: Cascade)
+  productId Int
+  product   Product  @relation(fields: [productId], references: [id])
+  quantity  Int      @default(1)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([cartId, productId])
+}
+
+model Customer {
+  id          Int      @id @default(autoincrement())
+  name        String
+  phone       String
+  address     String
+  city        String
+  province    String
+  postalCode  String
+  orders      Order[]
+  carts       Cart[]
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+}
+
+model Order {
+  id          Int           @id @default(autoincrement())
+  orderNumber String        @unique
+  customerId  Int
+  customer    Customer      @relation(fields: [customerId], references: [id])
+  items       OrderItem[]
+  totalCents  Int           @default(0)
+  status      String        @default("PENDING")
+  payment     Payment?
+  createdAt   DateTime      @default(now())
+  updatedAt   DateTime      @updatedAt
+}
+
+model OrderItem {
+  id         Int     @id @default(autoincrement())
+  orderId    Int
+  order      Order   @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  productId  Int
+  product    Product @relation(fields: [productId], references: [id])
+  quantity   Int     @default(1)
+  priceCents Int
+}
+
+model Payment {
+  id        Int           @id @default(autoincrement())
+  orderId   Int           @unique
+  order     Order         @relation(fields: [orderId], references: [id])
+  method    String
+  status    String        @default("PENDING")
+  reference String?
+  createdAt DateTime      @default(now())
+  updatedAt DateTime      @updatedAt
+}

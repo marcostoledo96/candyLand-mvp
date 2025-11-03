@@ -1,19 +1,41 @@
 import React, { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import styles from "./Checkout.module.css";
+import { postCheckout } from "../../lib/api";
 
 const AddressForm = () => {
-  const [form, setForm] = useState({ nombre: "", direccion: "", ciudad: "", telefono: "" });
+  const [form, setForm] = useState({ nombre: "", telefono: "", direccion: "", ciudad: "", localidad: "", provincia: "", codigoPostal: "" });
   const navigate = useNavigate();
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     setForm({ ...form, [e.target.name]: e.target.value });
   };
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    localStorage.setItem("checkoutData", JSON.stringify(form));
-    navigate("/checkout/pago");
+    try {
+      const cartId = localStorage.getItem("cartId");
+      const payload = {
+        nombre: form.nombre.trim(),
+        telefono: form.telefono.trim(),
+        direccion: form.direccion.trim(),
+        localidad: (form.localidad || form.ciudad || "").trim(),
+        provincia: form.provincia.trim(),
+        codigoPostal: String(form.codigoPostal).trim(),
+      };
+      const res = await postCheckout(payload, cartId || undefined);
+      localStorage.setItem("checkoutData", JSON.stringify(payload));
+      if (res?.cartId) localStorage.setItem("cartId", res.cartId);
+      navigate("/checkout/pago");
+    } catch (e: any) {
+      if (e?.missing?.length) {
+        alert(`Faltan campos: ${e.missing.join(", ")}`);
+      } else if (e?.error) {
+        alert(e.error);
+      } else {
+        alert("No se pudo guardar el checkout. Verificá que el backend esté corriendo en http://localhost:3000 e intentá nuevamente.");
+      }
+    }
   };
 
   return (
@@ -23,6 +45,8 @@ const AddressForm = () => {
       <input name="direccion" placeholder="Dirección" onChange={handleChange} required />
       <input name="ciudad" placeholder="Ciudad" onChange={handleChange} required />
       <input name="telefono" placeholder="Teléfono" onChange={handleChange} required />
+      <input name="provincia" placeholder="Provincia" onChange={handleChange} required />
+      <input name="codigoPostal" placeholder="Codigo Postal" onChange={handleChange} required />
       <button type="submit">Continuar al pago</button>
     </form>
   );

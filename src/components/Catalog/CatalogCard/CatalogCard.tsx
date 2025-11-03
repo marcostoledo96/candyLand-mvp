@@ -33,7 +33,13 @@ const CatalogCard: React.FC<Props> = ({ product }) => {
   return (
     <div className={styles.card}>
       <div className={styles.imageWrapper}>
-        <img src={product.image} alt={product.title} className={styles.image} />
+        <img
+          src={product.image}
+          alt={product.title}
+          className={styles.image}
+          loading="lazy"
+          decoding="async"
+        />
       </div>
       <h3>{product.title}</h3>
       <p className={styles.description}>{product.description}</p>
