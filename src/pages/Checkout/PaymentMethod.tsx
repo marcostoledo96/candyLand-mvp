@@ -1,3 +1,4 @@
+// Paso de pago: permite elegir método (efectivo/transferencia) y guarda en backend
 import React, { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import styles from "./Checkout.module.css";

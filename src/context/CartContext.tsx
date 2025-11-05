@@ -1,3 +1,4 @@
+// Contexto global del carrito: maneja items, totales y persistencia por cartId en localStorage
 import React, { createContext, useContext, useEffect, useState, ReactNode } from "react";
 import { Product } from "../components/Catalog/CatalogCard/CatalogCard";
 import { addItemToCart, getCart, ApiCart, updateCartItem, deleteCartItem } from "../lib/api";

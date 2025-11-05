@@ -1,15 +1,14 @@
-// Detecta URL base para la API
-// Prioridad:
-// 1) VITE_API_URL si está definido
-// 2) En modo DEV de Vite, usar base relativa ('') para aprovechar el proxy /api
-// 3) Caso contrario, usar http://localhost:3000
+// Cliente de API del frontend
+// Nota para el equipo: en dev intentamos pegarle al proxy de Vite (base relativa),
+// y si falla por algún motivo (proxy caído, puerto raro), reintentamos directo al backend local.
 const ENV = (import.meta as any).env || {};
 const ENV_API = ENV.VITE_API_URL;
 const IS_DEV = !!ENV.DEV; // true cuando corre con Vite en desarrollo (cualquier puerto)
-export const API_URL = ENV_API ?? (IS_DEV ? '' : 'http://localhost:3000');
+// En producción (Vercel) queremos base relativa para usar las serverless functions /api
+export const API_URL = ENV_API ?? '';
 
 // Fetch con fallback: si estamos en DEV y el proxy /api falla por conexión,
-// intenta directo contra http://127.0.0.1:3000
+// intenta directo contra http://127.0.0.1:5050 (nuestro backend local por defecto)
 async function fetchWithFallback(input: string, init?: RequestInit): Promise<Response> {
   try {
     return await fetch(input, init);

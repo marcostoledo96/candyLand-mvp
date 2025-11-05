@@ -1,3 +1,4 @@
+// Paso final del checkout: muestra resumen de la orden creada en el backend
 import React, { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useCart } from "../../context/CartContext";

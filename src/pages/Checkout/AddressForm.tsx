@@ -3,6 +3,7 @@ import { useNavigate } from "react-router-dom";
 import styles from "./Checkout.module.css";
 import { postCheckout } from "../../lib/api";
 
+// Formulario de datos del comprador; guarda en backend y avanza al paso de pago
 const AddressForm = () => {
   const [form, setForm] = useState({ nombre: "", telefono: "", direccion: "", ciudad: "", localidad: "", provincia: "", codigoPostal: "" });
   const navigate = useNavigate();
@@ -23,10 +24,12 @@ const AddressForm = () => {
         provincia: form.provincia.trim(),
         codigoPostal: String(form.codigoPostal).trim(),
       };
-      const res = await postCheckout(payload, cartId || undefined);
+  // Guardamos datos del checkout en el backend (queda asociado al cartId)
+  const res = await postCheckout(payload, cartId || undefined);
       localStorage.setItem("checkoutData", JSON.stringify(payload));
       if (res?.cartId) localStorage.setItem("cartId", res.cartId);
-      navigate("/checkout/pago");
+  // Si salió bien, avanzamos al siguiente paso
+  navigate("/checkout/pago");
     } catch (e: any) {
       if (e?.missing?.length) {
         alert(`Faltan campos: ${e.missing.join(", ")}`);

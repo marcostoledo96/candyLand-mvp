@@ -1,3 +1,4 @@
+// Punto de entrada del frontend: monta React y aplica estilos globales
 import React,{ StrictMode } from 'react'
 import { createRoot } from 'react-dom/client'
 import App from './App'

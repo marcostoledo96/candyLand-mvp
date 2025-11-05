@@ -1,28 +1,27 @@
-CandyLand Backend (Express) - Monorepo dentro de /candyLand
+CandyLand Backend (Express + Prisma)
 
-Requisitos
-- Node.js 18+ (recomendado 20+)
+Contexto
+- Esto vive dentro del monorepo principal (`/candyLand`). El frontend está en la raíz con Vite.
+- Usamos PostgreSQL (Neon) en `.env` con `DATABASE_URL` y Prisma como ORM.
 
-Setup rápido (SQLite)
-1) Copiar variables de entorno
+Cómo correrlo local
+1) Variables de entorno
+   - Copiá `.env.example` a `.env` y ajustá `DATABASE_URL`. Por defecto usamos Neon.
+   - `PORT` (por defecto 5050) y datos bancarios para el paso de pago.
 
-   cp .env.example .env
+2) Dependencias y Prisma
+   - `npm install`
+   - `npx prisma generate`
+   - Inicial: `npx prisma db push` (sin migraciones SQLite) y `node prisma/seed.js`
 
-2) Instalar dependencias
+3) Backend dev
+   - `npm run dev` (arranca en `http://127.0.0.1:5050`)
+   - Health: `GET /api/health` devuelve `ok`
 
-   npm install
-
-3) Generar Prisma y migrar
-
-   npx prisma generate
-   npx prisma migrate dev --name init
-   node prisma/seed.js
-
-4) Ejecutar backend
-
-   npm run dev
-
-Nota: El frontend está en la carpeta superior, con Vite en 5173 y proxy /api hacia 3000.
+Notas técnicas
+- El archivo `backend/app.js` exporta la app de Express sin levantar el servidor (sirve para serverless).
+- `backend/server.js` sólo levanta el HTTP local y usa `app.js`.
+- Prisma está instanciado como singleton en `backend/prismaClient.js` para evitar conexiones de más en serverless.
 
 Endpoints
 - GET /api  → { "message": "API ok" }
@@ -31,3 +30,14 @@ Endpoints
 - POST /api/checkout → guarda datos del comprador
 - POST /api/payment-method → método de pago
 - POST /api/orders/confirm → confirma orden
+
+Deploy en Vercel (resumen)
+- En la raíz hay `vercel.json` con:
+  - build de Vite → `dist/`
+  - rewrites de `/api/*` a `api/index.cjs` (función serverless)
+  - fallback SPA a `/index.html`
+- Variables de entorno a cargar en Vercel:
+  - `DATABASE_URL` (Neon, con `sslmode=require`)
+  - `BANK_ALIAS`, `BANK_CBU`, `BANK_TITULAR` si usás transferencia
+- El `postinstall` del `package.json` raíz corre `prisma generate` con el schema del backend.
+

@@ -1,12 +1,39 @@
-# React + Vite
+# CandyLand
 
-This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
+Proyecto e-commerce con React (Vite) + Express + Prisma.
 
-Currently, two official plugins are available:
+## Qué hay acá (en criollo)
+- Frontend Vite en la raíz: SPA con routing y componentes.
+- Backend en `backend/`: Express + Prisma contra Postgres (Neon).
+- Proxy de Vite manda `/api` al backend en dev.
+- Config listo para deploy a Vercel (frontend + serverless para `/api`).
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Babel](https://babeljs.io/) for Fast Refresh
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/) for Fast Refresh
+## Scripts útiles (raíz)
+- `npm run dev`: Vite en modo dev.
+- `npm run build`: build de producción (sale a `dist/`).
+- `npm run preview`: sirve el build para probarlo localmente.
+- Postinstall genera Prisma Client: se corre solo en `npm install`.
 
-## Expanding the ESLint configuration
+## Cómo correr local
+1) Backend (mirá `backend/README.md`)
+	 - Ajustá `.env` (PORT=5050, `DATABASE_URL` de Neon).
+	 - `npx prisma db push` y `node prisma/seed.js` la primera vez.
+	 - `npm --prefix backend run dev` arranca el backend.
+2) Frontend
+	 - `npm run dev` y abrir `http://localhost:5173` (o 5174).
 
-If you are developing a production application, we recommend using TypeScript with type-aware lint rules enabled. Check out the [TS template](https://github.com/vitejs/vite/tree/main/packages/create-vite/template-react-ts) for information on how to integrate TypeScript and [`typescript-eslint`](https://typescript-eslint.io) in your project.
+## Deploy a Vercel
+- `vercel.json` ya está configurado:
+	- Build del frontend con Vite → `dist/`.
+	- Rewrites de `/api/*` → `api/index.cjs` (nuestra app Express como serverless).
+	- Fallback SPA → `index.html`.
+- Variables de entorno en el panel de Vercel (Project Settings → Environment Variables):
+	- `DATABASE_URL` (Neon) con `sslmode=require`.
+	- `BANK_ALIAS`, `BANK_CBU`, `BANK_TITULAR` si se usa transferencia.
+- Logs de serverless /api en la pestaña “Functions” del deployment.
+
+## Estructura rápida
+- `src/`: componentes, páginas y lógica de frontend.
+- `backend/`: Express + Prisma, exporta `app.js` para serverless y `server.js` para local.
+- `api/index.cjs`: función serverless que envuelve la app de Express.
+- `vercel.json`: routing y build en Vercel.
