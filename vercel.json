@@ -2,15 +2,8 @@
   "$schema": "https://openapi.vercel.sh/vercel.json",
   "buildCommand": "npx prisma migrate deploy --schema backend/prisma/schema.prisma && npm run build",
   "outputDirectory": "dist",
-  "functions": {
-    "api/index.cjs": {
-      "runtime": "nodejs20.x"
-    },
-    "api/[...path].cjs": {
-      "runtime": "nodejs20.x"
-    }
-  },
   "rewrites": [
+    { "source": "/api/(.*)", "destination": "/api/$1" },
     { "source": "/(.*)", "destination": "/index.html" }
   ]
 }
