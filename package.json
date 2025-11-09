@@ -11,6 +11,9 @@
     "postinstall": "prisma generate --schema backend/prisma/schema.prisma"
   },
   "dependencies": {
+    "cors": "^2.8.5",
+    "dotenv": "^16.4.5",
+    "express": "^4.21.1",
     "@prisma/client": "^5.22.0",
     "serverless-http": "^3.2.0",
     "react": "^19.1.1",
