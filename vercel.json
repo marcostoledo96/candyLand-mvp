@@ -4,8 +4,7 @@
   "buildCommand": "npx prisma db push --schema backend/prisma/schema.prisma && node backend/prisma/seed.js && npm run build",
   "outputDirectory": "dist",
   "routes": [
-    { "handle": "filesystem" },
-    { "src": "/api/(.*)", "dest": "/api/[...path].cjs" },
+    { "src": "/api/(.*)", "dest": "/api/$1" },
     { "src": "/(.*)", "dest": "/index.html" }
   ]
 }
