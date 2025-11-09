@@ -33,9 +33,9 @@ Endpoints
 
 Deploy en Vercel (resumen)
 - En la raíz hay `vercel.json` con:
-  - build de Vite → `dist/`
-  - rewrites de `/api/*` a `api/index.cjs` (función serverless)
-  - fallback SPA a `/index.html`
+   - build de Vite → `dist/`
+   - función serverless catch-all: `api/[...path].cjs` (atiende todas las rutas `/api/*` con Express)
+   - fallback SPA a `/index.html`
 - Variables de entorno a cargar en Vercel:
   - `DATABASE_URL` (Neon, con `sslmode=require`)
   - `BANK_ALIAS`, `BANK_CBU`, `BANK_TITULAR` si usás transferencia
