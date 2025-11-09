@@ -1,18 +1,22 @@
 .producto {
   text-align: center;
-  transition: transform 0.3s ease;
+  transition: transform 0.3s ease, box-shadow 0.3s ease;
+  padding: 12px;
+  border-radius: 24px;
 }
 
 .producto:hover {
-  transform: scale(1.05);
+  transform: translateY(-6px);
 }
 
 .imagenHover {
   position: relative;
-  width: 300px;  
-  height: 300px; 
-  margin: auto;
+  width: clamp(140px, 28vw, 220px);
+  aspect-ratio: 1 / 1;
+  margin: 0 auto 12px;
   overflow: hidden;
+  border-radius: 24px;
+  background: #fff2f8;
 }
 
 .imagenHover img {
@@ -20,12 +24,12 @@
   height: 100%;
   object-fit: cover;
   display: block;
+  transition: transform 0.4s ease;
 }
 
 .hoverImg {
   position: absolute;
-  top: 0;
-  left: 0;
+  inset: 0;
   opacity: 0;
   transition: opacity 0.4s ease;
 }
@@ -34,24 +38,28 @@
   opacity: 1;
 }
 
-/* Responsive */
-@media (max-width: 1024px) {
+.producto p {
+  font-size: 1rem;
+  color: #4a2c2a;
+  font-weight: 600;
+}
+
+@media (min-width: 768px) {
+  .producto {
+    padding: 18px;
+  }
+
   .imagenHover {
-    width: 180px;
-    height: 180px;
+    width: 220px;
   }
 }
 
-@media (max-width: 768px) {
-  .imagenHover {
-    width: 150px;
-    height: 150px;
+@media (max-width: 420px) {
+  .producto {
+    padding: 8px;
   }
-}
 
-@media (max-width: 480px) {
   .imagenHover {
-    width: 120px;
-    height: 120px;
+    width: min(70vw, 200px);
   }
 }

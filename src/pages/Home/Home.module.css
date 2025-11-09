@@ -1,21 +1,37 @@
 .productosCandy {
-  padding: 50px 20px;
+  padding: clamp(32px, 6vw, 72px) clamp(16px, 6vw, 48px);
   background-color: white;
   text-align: center;
   font-family: 'Oswald', sans-serif;
 }
 
 .tituloProductos {
-  font-size: 2rem;
+  font-size: clamp(1.75rem, 3vw, 2.5rem);
   margin-bottom: 30px;
   color: #ff3399;
+  letter-spacing: 0.05em;
 }
 
 .productosFlex {
- display: flex;
-  flex-wrap: wrap;
-  justify-content: center;
-  gap: 40px;
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(210px, 1fr));
+  gap: clamp(20px, 4vw, 64px);
   max-width: 1200px;
   margin: 0 auto;
+  width: 100%;
+  justify-items: center;
+}
+
+@media (max-width: 600px) {
+  .productosCandy {
+    text-align: left;
+  }
+
+  .tituloProductos {
+    text-align: center;
+  }
+
+  .productosFlex {
+    grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+  }
 }

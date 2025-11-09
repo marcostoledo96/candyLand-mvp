@@ -1,56 +1,63 @@
-// Footer del sitio: links útiles y redes
+// Footer del sitio: links utiles, newsletter y redes sociales
 import React from "react";
 import styles from "./Footer.module.css";
 import { FaFacebookF, FaInstagram } from "react-icons/fa";
+import logo from "../../assets/img/logo.png";
 
 const Footer = () => {
+  const year = new Date().getFullYear();
+
   return (
     <footer className={styles.footer}>
-      {/* Logo */}
-      <div className={styles.footerColumn}>
-        <img src="/src/assets/img/logo.png" alt="Candy Land" className={styles.logo} />
+      <div className={styles.footerContent}>
+        <div className={styles.footerColumn}>
+          <img src={logo} alt="Candy Land" className={styles.logo} />
+          <p className={styles.tagline}>
+            Golosinas elegidas con amor para cada momento dulce.
+          </p>
+        </div>
+
+        <div className={styles.footerColumn}>
+          <h4>Contenidos</h4>
+          <ul>
+            <li><a href="#inicio">Inicio</a></li>
+            <li><a href="#nuestro-mundo">Nuestro mundo</a></li>
+            <li><a href="#menu">Menu</a></li>
+          </ul>
+        </div>
+
+        <div className={styles.footerColumn}>
+          <h4>Ayuda</h4>
+          <ul>
+            <li><a href="#tutoriales">Tutoriales</a></li>
+            <li><a href="#trabaja">Trabaja con nosotros</a></li>
+            <li><a href="#franquicias">Franquicias</a></li>
+            <li><a href="#contacto">Contacto</a></li>
+          </ul>
+        </div>
+
+        <div className={`${styles.footerColumn} ${styles.newsletter}`}>
+          <h4>Suscribite para novedades</h4>
+          <input type="text" placeholder="Tu nombre" />
+          <input type="email" placeholder="Tu email" />
+          <button className={styles.subscribeBtn}>Suscribirme</button>
+
+          <div className={styles.socials}>
+            <span>Conectate con nosotros</span>
+            <div className={styles.socialIcons}>
+              <a href="#" aria-label="Candy Land en Facebook">
+                <FaFacebookF />
+              </a>
+              <a href="#" aria-label="Candy Land en Instagram">
+                <FaInstagram />
+              </a>
+            </div>
+          </div>
+        </div>
       </div>
 
-      {/* Contenidos */}
-      <div className={styles.footerColumn}>
-        <h4>CONTENIDOS</h4>
-        <ul>
-          <li><a href="#inicio">Inicio</a></li>
-          <li><a href="#nuestro-mundo">Nuestro Mundo</a></li>
-          <li><a href="#menu">Menú</a></li>
-        </ul>
-      </div>
-
-      {/* Ayuda */}
-      <div className={styles.footerColumn}>
-        <h4>AYUDA</h4>
-        <ul>
-          <li><a href="#tutoriales">Tutoriales</a></li>
-          <li><a href="#trabaja">Trabajá con Nosotros</a></li>
-          <li><a href="#franquicias">Franquicias</a></li>
-          <li><a href="#contacto">Contacto</a></li>
-        </ul>
-      </div>
-
-      {/* Newsletter */}
-      <div className={`${styles.footerColumn} ${styles.newsletter}`}>
-        <h4>¡SUSCRIBITE PARA NOVEDADES!</h4>
-        <input type="text" placeholder="Tu nombre" />
-        <input type="email" placeholder="Tu email" />
-        <button className={styles.subscribeBtn}>SUSCRIBIRME</button>
-        {/* Redes */}
-      <div className={`${styles.footerColumn} ${styles.socials}`}>
-        <h4>CONECTATE CON NOSOTROS</h4>
-        <a href="#"><FaFacebookF /></a>
-        <a href="#"><FaInstagram /></a>
-      </div>
-      </div>
-
-    
-
-      {/* Copy */}
       <div className={styles.copy}>
-        © Copyright 2021 Tienda Candyland - Todos los derechos reservados.
+        (c) {year} Tienda Candyland - Todos los derechos reservados.
       </div>
     </footer>
   );

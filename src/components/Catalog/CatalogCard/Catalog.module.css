@@ -1,53 +1,67 @@
 .card {
   background: #fff;
   padding: 20px;
-  border-radius: 12px;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+  border-radius: 18px;
+  box-shadow: 0 6px 18px rgba(0, 0, 0, 0.08);
   text-align: center;
-  transition: transform 0.2s ease;
-  width: 300px;  /* <-- Estos 2 lo arreglan */
-  height: 400px;
-  margin: 0 auto;
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  height: 100%;
 }
 
-
 .card:hover {
-  transform: scale(1.03);
+  transform: translateY(-4px);
+  box-shadow: 0 12px 24px rgba(0, 0, 0, 0.12);
 }
 
 .imageWrapper {
-  height: 180px;
+  width: 100%;
+  aspect-ratio: 4 / 3;
   overflow: hidden;
-  border-radius: 8px;
+  border-radius: 12px;
+  background: #fff4f8;
 }
 
 .image {
   width: 100%;
   height: 100%;
   object-fit: cover;
+  transition: transform 0.3s ease;
+}
+
+.card:hover .image {
+  transform: scale(1.05);
+}
+
+.card h3 {
+  font-size: 1.1rem;
+  color: #4a2c2a;
 }
 
 .description {
   font-size: 0.9rem;
   color: #666;
-  margin: 10px 0;
+  flex: 1;
 }
 
 .price {
-  font-size: 1.1rem;
+  font-size: 1.2rem;
   color: #ff3399;
   font-weight: bold;
-  margin-bottom: 10px;
 }
 
 .addButton {
   background-color: #ff3399;
   color: #fff;
   border: none;
-  padding: 8px 16px;
-  border-radius: 20px;
+  padding: 10px 16px;
+  border-radius: 999px;
   cursor: pointer;
   transition: background-color 0.3s ease;
+  font-weight: 600;
+  width: 100%;
 }
 
 .addButton:hover {
@@ -55,26 +69,15 @@
 }
 
 .inCart {
-  background-color: #bbb;  /* gris claro cuando ya está en el carrito */
-  color: #fff;
+  background-color: #bbb;
 }
 
 .inCart:hover {
-  background-color: #999;
+  background-color: #a2a2a2;
 }
 
-@keyframes addedPulse {
-  0% {
-    transform: scale(1);
+@media (max-width: 480px) {
+  .card {
+    padding: 16px;
   }
-  50% {
-    transform: scale(1.08);
-  }
-  100% {
-    transform: scale(1);
-  }
-}
-
-.addButton:active {
-  animation: addedPulse 0.3s ease;
 }

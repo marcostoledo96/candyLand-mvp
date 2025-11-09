@@ -1,29 +1,37 @@
-/* 🎨 CONTENEDOR GENERAL */
+/* Contenedor general */
 .catalogContainer {
   display: flex;
-  gap: 30px;
-  padding: 30px;
+  gap: clamp(24px, 4vw, 56px);
+  align-items: flex-start;
+  padding: clamp(20px, 4vw, 48px);
   background-color: #fafafa;
   min-height: 100vh;
-  font-family: "Poppins", sans-serif;
+  box-sizing: border-box;
 }
 
-/* 🎯 SIDEBAR DE FILTROS */
+/* Sidebar de filtros */
 .filters {
-  width: 260px;
+  width: 280px;
   background-color: #fff;
-  border-radius: 12px;
+  border-radius: 16px;
   padding: 20px;
-  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.08);
+  box-shadow: 0 8px 20px rgba(0, 0, 0, 0.08);
   display: flex;
   flex-direction: column;
   gap: 15px;
-  height:50vh
+  position: sticky;
+  top: 100px;
 }
 
 .filters h3 {
-  font-size: 18px;
-  margin-bottom: 10px;
+  font-size: 1.1rem;
+  margin-bottom: 4px;
+}
+
+.filters label {
+  font-size: 0.9rem;
+  font-weight: 600;
+  color: #555;
 }
 
 .filters input,
@@ -31,23 +39,19 @@
   width: 100%;
   padding: 10px;
   border: 1px solid #ddd;
-  border-radius: 8px;
-  font-size: 15px;
+  border-radius: 10px;
+  font-size: 0.95rem;
+  font-family: inherit;
+  background: #fff;
 }
 
-/* 🛍️ GRID DE PRODUCTOS */
+/* Grid de productos */
 .catalogGrid {
   flex: 1;
+  min-width: 0;
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
-  gap: 30px;
-}
-
-.loader {
-  text-align: center;
-  font-size: 18px;
-  padding: 20px;
-  font-weight: 500;
+  grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
+  gap: clamp(20px, 4vw, 56px);
 }
 
 .loader,
@@ -55,8 +59,9 @@
 .endMessage {
   grid-column: 1 / -1;
   text-align: center;
-  font-size: 16px;
+  font-size: 1rem;
   padding: 20px;
+  color: #555;
 }
 
 .loadingMore {
@@ -67,7 +72,7 @@
   color: #777;
 }
 
-/* 📱 TABLET */
+/* Tablet */
 @media (max-width: 1024px) {
   .catalogContainer {
     flex-direction: column;
@@ -75,9 +80,10 @@
 
   .filters {
     width: 100%;
+    position: static;
     display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-    gap: 15px;
+    grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+    gap: 12px;
     align-items: end;
   }
 
@@ -86,38 +92,23 @@
   }
 }
 
-/* 📱 CELULAR */
+/* Celular */
 @media (max-width: 600px) {
   .catalogContainer {
-    padding: 15px;
+    padding: 16px;
   }
 
   .filters {
-    width: 100%;
-    padding: 15px;
-    display: flex;
-    flex-direction: column;
-    align-items: flex-start;
-    gap: 12px;
-  }
-
-  .filters label {
-    align-self: flex-start; 
-    font-size: 15px;
-    font-weight: 500;
+    grid-template-columns: 1fr;
+    padding: 16px;
   }
 
   .filters input,
   .filters select {
-    width: 100%;
-    font-size: 16px;
-    padding: 12px;
+    font-size: 1rem;
   }
 
-  /* ✅ Buscador un poquito más grande */
-  .filters input[type="text"] {
-    font-size: 16px;
-    padding: 14px;
+  .catalogGrid {
+    grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
   }
 }
-
