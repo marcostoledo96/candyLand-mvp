@@ -18,6 +18,19 @@ app.get('/api/health', (_req, res) => {
   res.status(200).send('ok');
 });
 
+// DB health (probar conexión real a la base de datos)
+app.get('/api/db/health', async (_req, res) => {
+  try {
+    // consulta mínima; si falla, Prisma/DB no están accesibles
+    await prisma.$queryRaw`SELECT 1`;
+    const products = await prisma.product.count().catch(() => null);
+    res.json({ ok: true, productsCount: products });
+  } catch (err) {
+    console.error('DB health check failed:', err);
+    res.status(500).json({ ok: false, error: 'DB connection failed' });
+  }
+});
+
 // Helpers
 async function getOrCreateCart(cartId) {
   if (cartId) {
