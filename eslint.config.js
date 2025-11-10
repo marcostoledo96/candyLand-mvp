@@ -28,7 +28,7 @@ export default defineConfig([
   },
   // Overrides para código de servidor (Node)
   {
-    files: ['backend/**/*.{js,jsx}', 'api/**/*.{js,jsx}'],
+    files: ['backend/**/*.{js,jsx}', 'api/**/*.{js,jsx}', 'scripts/**/*.{js,jsx}'],
     languageOptions: {
       ecmaVersion: 2020,
       globals: {
