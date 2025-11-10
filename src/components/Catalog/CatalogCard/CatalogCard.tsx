@@ -33,13 +33,24 @@ const CatalogCard: React.FC<Props> = ({ product }) => {
   return (
     <div className={styles.card}>
       <div className={styles.imageWrapper}>
-        <img
-          src={product.image}
-          alt={product.title}
-          className={styles.image}
-          loading="lazy"
-          decoding="async"
-        />
+        {(() => {
+          const toWebp = (p: string) => p.replace(/\.(jpg|jpeg|png)$/i, ".webp");
+          const isConvertible = /\.(jpg|jpeg|png)$/i.test(product.image);
+          return (
+            <picture>
+              {isConvertible && (
+                <source srcSet={toWebp(product.image)} type="image/webp" />
+              )}
+              <img
+                src={product.image}
+                alt={product.title}
+                className={styles.image}
+                loading="lazy"
+                decoding="async"
+              />
+            </picture>
+          );
+        })()}
       </div>
       <h3>{product.title}</h3>
       <p className={styles.description}>{product.description}</p>

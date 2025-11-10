@@ -12,19 +12,16 @@ const CatalogPage = () => {
   const [selectedCategory, setSelectedCategory] = useState("Todos");
   const [minPrice, setMinPrice] = useState(0);
   const [maxPrice, setMaxPrice] = useState(5000);
-  const [visibleProducts, setVisibleProducts] = useState(10); // Cantidad inicial
+  const [visibleProducts, setVisibleProducts] = useState(20); // mostrar más inicialmente
   const [loading, setLoading] = useState(true);
   const [loadingMore, setLoadingMore] = useState(false); // loader scroll
 
   const loadMore = () => {
     if (loadingMore || visibleProducts >= filteredProducts.length) return;
     setLoadingMore(true);
-
-    // Simula un delay como si pidiera más al backend
-    setTimeout(() => { return; /* disabled mock; usando backend */
-      setVisibleProducts((prev) => prev + 10);
-      setLoadingMore(false);
-    }, 1500);
+    // Incremento inmediato sin delay artificial
+    setVisibleProducts((prev) => prev + 20);
+    setLoadingMore(false);
   };
 
 
@@ -42,39 +39,12 @@ const CatalogPage = () => {
     return () => window.removeEventListener("scroll", handleScroll);
   });
 
- // ✅ Simular carga inicial de productos
-  useEffect(() => {
-    setLoading(true);
-    setTimeout(() => {
-      setProducts([
-  { id: 1, title: "Caramelos Frutales", description: "Dulces tropicales suaves.", price: 1200, image: "/img/dulce1.jpg", category: "Caramelos" },
-  { id: 2, title: "Gomitas Ácidas", description: "Con un toque ácido y suave.", price: 1500, image: "/img/dulce2.jpg", category: "Gomitas" },
-  { id: 3, title: "Chocolates", description: "Chocolate con leche cremoso.", price: 2000, image: "/img/dulce3.jpg", category: "Chocolate" },
-  { id: 4, title: "Alfajores", description: "Clásicos con dulce de leche.", price: 1800, image: "/img/dulce4.jpg", category: "Alfajores" },
-  { id: 5, title: "Bombones", description: "Bombones rellenos variados.", price: 2500, image: "/img/dulce5.jpg", category: "Chocolate" },
-  { id: 6, title: "Chicles", description: "Sabor a frutas explosivas.", price: 800, image: "/img/dulce6.jpg", category: "Chicles" },
-  { id: 7, title: "Malvaviscos", description: "Esponjosos y deliciosos.", price: 900, image: "/img/chocolate1.jpg", category: "Golosinas" },
-  { id: 8, title: "Paletas", description: "Paletas de caramelo clásicas.", price: 700, image: "/img/caramelos3.jpg", category: "Caramelos" },
-  { id: 9, title: "Turrón de Maní", description: "Turrón suave con maní.", price: 1300, image: "/img/golosina1.jpg", category: "Turrón" },
-  { id: 10, title: "Dulce de Leche", description: "Dulce tradicional argentino.", price: 1600, image: "/img/golosina2.jpg", category: "Postres" },
-  { id: 11, title: "Confites", description: "Confites de colores festivos.", price: 1100, image: "/img/golosina3.jpg", category: "Caramelos" },
-  { id: 12, title: "Galletitas", description: "Galletas dulces crocantes.", price: 1000, image: "/img/golosina4.jpg", category: "Galletas" },
-  { id: 13, title: "Barritas de Cereal", description: "Con chocolate y avena.", price: 1400, image: "/img/golosina5.jpg", category: "Snacks" },
-  { id: 14, title: "Praliné de Maní", description: "Maní acaramelado crocante.", price: 900, image: "/img/golosina6.jpg", category: "Snacks" },
-  { id: 15, title: "Rellenitas", description: "Galletas rellenas de dulce.", price: 1200, image: "/img/gomitas2.jpg", category: "Galletas" },
-  { id: 16, title: "Ositos de Gomita", description: "Gomitas suaves de colores.", price: 1500, image: "/img/destacado-golosina1.jpg", category: "Gomitas" },
-  { id: 17, title: "Mentitas", description: "Refrescantes caramelos de menta.", price: 700, image: "/img/tutorial2.jpg", category: "Caramelos" },
-  { id: 18, title: "Dragees", description: "Chocolate cubierto de colores.", price: 1700, image: "/img/destacado-golosina2.jpg", category: "Chocolate" },
-  { id: 19, title: "Caramelos Masticables", description: "Suaves y frutales.", price: 900, image: "/img/dulzura-central.jpg", category: "Caramelos" },
-  { id: 20, title: "Rocklets", description: "Chocolates con grageas.", price: 1800, image: "/img/tutorial5.jpg", category: "Chocolate" },
-    ]);
-      setLoading(false);
-    }, 2000);
-  }, []);
-  
-  // Cargar productos desde backend
+  // Removido mock local con delay artificial: se usa solo backend real
+
+  // Cargar productos desde backend con caché en sessionStorage para respuesta instantánea
   useEffect(() => {
     let mounted = true;
+    const CACHE_KEY = 'catalogProductsV1';
     async function load() {
       try {
         setLoading(true);
@@ -83,7 +53,9 @@ const CatalogPage = () => {
         const normalizeImageUrl = (u?: string | null) => {
           const s = String(u || '').trim();
           if (!s) return '/img/dulce1.jpg';
-          return s.startsWith('/img/') ? `/src/assets${s}` : s;
+          if (s.startsWith('/img/')) return s; // mantener ruta pública correcta
+          if (/^https?:/i.test(s)) return s; // URLs externas
+          return `/img/${s.replace(/^\/+/, '')}`; // nombre simple -> carpeta img
         };
         const mapped: Product[] = data.map((p) => ({
           id: p.id,
@@ -94,12 +66,37 @@ const CatalogPage = () => {
           category: p.category || "Otros",
         }));
         setProducts(mapped);
+        try { sessionStorage.setItem(CACHE_KEY, JSON.stringify(data)); } catch {}
       } catch (e) {
         console.error(e);
       } finally {
         if (mounted) setLoading(false);
       }
     }
+    // Intentar responder desde caché primero
+    try {
+      const raw = sessionStorage.getItem(CACHE_KEY);
+      if (raw) {
+        const cached: ApiProduct[] = JSON.parse(raw);
+        const normalizeImageUrl = (u?: string | null) => {
+          const s = String(u || '').trim();
+          if (!s) return '/img/dulce1.jpg';
+          if (s.startsWith('/img/')) return s;
+          if (/^https?:/i.test(s)) return s;
+          return `/img/${s.replace(/^\/+/, '')}`;
+        };
+        const mapped: Product[] = cached.map((p) => ({
+          id: p.id,
+          title: p.title,
+          description: p.description || "",
+          price: Math.round((p.priceCents || 0) / 100),
+          image: normalizeImageUrl(p.image),
+          category: p.category || "Otros",
+        }));
+        setProducts(mapped);
+        setLoading(false);
+      }
+    } catch {}
     load();
     return () => { mounted = false; };
   }, []);
