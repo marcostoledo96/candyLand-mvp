@@ -1,3 +1,3 @@
-// Catch-all /api/* function using Express app directly
+// Catch-all /api/* function delegating to Express app
 const app = require('../backend/app');
-module.exports = app;
+module.exports = (req, res) => app(req, res);
