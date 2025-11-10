@@ -11,7 +11,9 @@ const CartPage = () => {
     return (
       <div className={styles.container}>
         <h2>Tu carrito está vacío 😢</h2>
-        <button onClick={() => navigate("/catalogo")}>Volver a la tienda</button>
+        <button className={styles.backBtn} onClick={() => navigate("/catalogo")}>
+          Volver a la tienda
+        </button>
       </div>
     );
   }

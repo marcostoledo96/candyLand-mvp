@@ -45,6 +45,21 @@ const CatalogPage = () => {
   useEffect(() => {
     let mounted = true;
     const CACHE_KEY = 'catalogProductsV1';
+    // Función de corrección de imágenes por título (se declara fuera de load para estar disponible en caché y fetch)
+    const fixByTitleLocal = (title: string, current: string): string => {
+      const t = title.toLowerCase();
+      if (t.includes('alfajores clásicos')) return '/img/golosina5.jpg';
+      if (t.includes('chicles frutales')) return '/img/golosinas-hero.jpg';
+      if (t.includes('gomitas de ositos')) return '/img/gomitas2.jpg';
+      if (t.includes('alfajores de maicena')) return '/img/dulzura-central.jpg';
+      if (t.includes('mentitas')) return '/img/caramelos3.jpg';
+      if (t.includes('rocklets')) return '/img/destacado-golosina1.jpg';
+      if (t.includes('paletas multisabor')) return '/img/caramelos3.jpg';
+      if (t.includes('galletitas dulces')) return '/img/golosina6.jpg';
+      if (t.includes('praliné de maní')) return '/img/dulce4.jpg';
+      if (t.includes('alfajores triples')) return '/img/golosina5.jpg';
+      return current;
+    };
     async function load() {
       try {
         setLoading(true);
@@ -57,14 +72,18 @@ const CatalogPage = () => {
           if (/^https?:/i.test(s)) return s; // URLs externas
           return `/img/${s.replace(/^\/+/, '')}`; // nombre simple -> carpeta img
         };
-        const mapped: Product[] = data.map((p) => ({
-          id: p.id,
-          title: p.title,
-          description: p.description || "",
-          price: Math.round((p.priceCents || 0) / 100),
-          image: normalizeImageUrl(p.image),
-          category: p.category || "Otros",
-        }));
+        const mapped: Product[] = data.map((p) => {
+          const baseImg = normalizeImageUrl(p.image);
+          const fixed = fixByTitleLocal(p.title, baseImg);
+          return {
+            id: p.id,
+            title: p.title,
+            description: p.description || "",
+            price: Math.round((p.priceCents || 0) / 100),
+            image: fixed,
+            category: p.category || "Otros",
+          };
+        });
         setProducts(mapped);
         try { sessionStorage.setItem(CACHE_KEY, JSON.stringify(data)); } catch {}
       } catch (e) {
@@ -85,14 +104,18 @@ const CatalogPage = () => {
           if (/^https?:/i.test(s)) return s;
           return `/img/${s.replace(/^\/+/, '')}`;
         };
-        const mapped: Product[] = cached.map((p) => ({
-          id: p.id,
-          title: p.title,
-          description: p.description || "",
-          price: Math.round((p.priceCents || 0) / 100),
-          image: normalizeImageUrl(p.image),
-          category: p.category || "Otros",
-        }));
+        const mapped: Product[] = cached.map((p) => {
+          const baseImg = normalizeImageUrl(p.image);
+          const fixed = fixByTitleLocal(p.title, baseImg);
+          return {
+            id: p.id,
+            title: p.title,
+            description: p.description || "",
+            price: Math.round((p.priceCents || 0) / 100),
+            image: fixed,
+            category: p.category || "Otros",
+          };
+        });
         setProducts(mapped);
         setLoading(false);
       }
