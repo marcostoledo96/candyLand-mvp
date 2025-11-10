@@ -47,26 +47,26 @@ const CatalogPage = () => {
     setLoading(true);
     setTimeout(() => {
       setProducts([
-      { id: 1, title: "Caramelos Frutales", description: "Dulces tropicales suaves.", price: 1200, image: "/src/assets/img/dulce1.jpg", category: "Caramelos" },
-      { id: 2, title: "Gomitas Ácidas", description: "Con un toque ácido y suave.", price: 1500, image: "/src/assets/img/dulce2.jpg", category: "Gomitas" },
-      { id: 3, title: "Chocolates", description: "Chocolate con leche cremoso.", price: 2000, image: "/src/assets/img/dulce3.jpg", category: "Chocolate" },
-      { id: 4, title: "Alfajores", description: "Clásicos con dulce de leche.", price: 1800, image: "/src/assets/img/dulce4.jpg", category: "Alfajores" },
-      { id: 5, title: "Bombones", description: "Bombones rellenos variados.", price: 2500, image: "/src/assets/img/dulce5.jpg", category: "Chocolate" },
-      { id: 6, title: "Chicles", description: "Sabor a frutas explosivas.", price: 800, image: "/src/assets/img/dulce6.jpg", category: "Chicles" },
-      { id: 7, title: "Malvaviscos", description: "Esponjosos y deliciosos.", price: 900, image: "/src/assets/img/chocolate1.jpg", category: "Golosinas" },
-      { id: 8, title: "Paletas", description: "Paletas de caramelo clásicas.", price: 700, image: "/src/assets/img/caramelos3.jpg", category: "Caramelos" },
-      { id: 9, title: "Turrón de Maní", description: "Turrón suave con maní.", price: 1300, image: "/src/assets/img/golosina1.jpg", category: "Turrón" },
-      { id: 10, title: "Dulce de Leche", description: "Dulce tradicional argentino.", price: 1600, image: "/src/assets/img/golosina2.jpg", category: "Postres" },
-      { id: 11, title: "Confites", description: "Confites de colores festivos.", price: 1100, image: "/src/assets/img/golosina3.jpg", category: "Caramelos" },
-      { id: 12, title: "Galletitas", description: "Galletas dulces crocantes.", price: 1000, image: "/src/assets/img/golosina4.jpg", category: "Galletas" },
-      { id: 13, title: "Barritas de Cereal", description: "Con chocolate y avena.", price: 1400, image: "/src/assets/img/golosina5.jpg", category: "Snacks" },
-      { id: 14, title: "Praliné de Maní", description: "Maní acaramelado crocante.", price: 900, image: "/src/assets/img/golosina6.jpg", category: "Snacks" },
-      { id: 15, title: "Rellenitas", description: "Galletas rellenas de dulce.", price: 1200, image: "/src/assets/img/gomitas2.jpg", category: "Galletas" },
-      { id: 16, title: "Ositos de Gomita", description: "Gomitas suaves de colores.", price: 1500, image: "/src/assets/img/destacado-golosina1.jpg", category: "Gomitas" },
-      { id: 17, title: "Mentitas", description: "Refrescantes caramelos de menta.", price: 700, image: "/src/assets/img/tutorial2.jpg", category: "Caramelos" },
-      { id: 18, title: "Dragees", description: "Chocolate cubierto de colores.", price: 1700, image: "/src/assets/img/destacado-golosina2.jpg", category: "Chocolate" },
-      { id: 19, title: "Caramelos Masticables", description: "Suaves y frutales.", price: 900, image: "/src/assets/img/dulzura-central.jpg", category: "Caramelos" },
-      { id: 20, title: "Rocklets", description: "Chocolates con grageas.", price: 1800, image: "/src/assets/img/tutorial5.jpg", category: "Chocolate" },
+  { id: 1, title: "Caramelos Frutales", description: "Dulces tropicales suaves.", price: 1200, image: "/img/dulce1.jpg", category: "Caramelos" },
+  { id: 2, title: "Gomitas Ácidas", description: "Con un toque ácido y suave.", price: 1500, image: "/img/dulce2.jpg", category: "Gomitas" },
+  { id: 3, title: "Chocolates", description: "Chocolate con leche cremoso.", price: 2000, image: "/img/dulce3.jpg", category: "Chocolate" },
+  { id: 4, title: "Alfajores", description: "Clásicos con dulce de leche.", price: 1800, image: "/img/dulce4.jpg", category: "Alfajores" },
+  { id: 5, title: "Bombones", description: "Bombones rellenos variados.", price: 2500, image: "/img/dulce5.jpg", category: "Chocolate" },
+  { id: 6, title: "Chicles", description: "Sabor a frutas explosivas.", price: 800, image: "/img/dulce6.jpg", category: "Chicles" },
+  { id: 7, title: "Malvaviscos", description: "Esponjosos y deliciosos.", price: 900, image: "/img/chocolate1.jpg", category: "Golosinas" },
+  { id: 8, title: "Paletas", description: "Paletas de caramelo clásicas.", price: 700, image: "/img/caramelos3.jpg", category: "Caramelos" },
+  { id: 9, title: "Turrón de Maní", description: "Turrón suave con maní.", price: 1300, image: "/img/golosina1.jpg", category: "Turrón" },
+  { id: 10, title: "Dulce de Leche", description: "Dulce tradicional argentino.", price: 1600, image: "/img/golosina2.jpg", category: "Postres" },
+  { id: 11, title: "Confites", description: "Confites de colores festivos.", price: 1100, image: "/img/golosina3.jpg", category: "Caramelos" },
+  { id: 12, title: "Galletitas", description: "Galletas dulces crocantes.", price: 1000, image: "/img/golosina4.jpg", category: "Galletas" },
+  { id: 13, title: "Barritas de Cereal", description: "Con chocolate y avena.", price: 1400, image: "/img/golosina5.jpg", category: "Snacks" },
+  { id: 14, title: "Praliné de Maní", description: "Maní acaramelado crocante.", price: 900, image: "/img/golosina6.jpg", category: "Snacks" },
+  { id: 15, title: "Rellenitas", description: "Galletas rellenas de dulce.", price: 1200, image: "/img/gomitas2.jpg", category: "Galletas" },
+  { id: 16, title: "Ositos de Gomita", description: "Gomitas suaves de colores.", price: 1500, image: "/img/destacado-golosina1.jpg", category: "Gomitas" },
+  { id: 17, title: "Mentitas", description: "Refrescantes caramelos de menta.", price: 700, image: "/img/tutorial2.jpg", category: "Caramelos" },
+  { id: 18, title: "Dragees", description: "Chocolate cubierto de colores.", price: 1700, image: "/img/destacado-golosina2.jpg", category: "Chocolate" },
+  { id: 19, title: "Caramelos Masticables", description: "Suaves y frutales.", price: 900, image: "/img/dulzura-central.jpg", category: "Caramelos" },
+  { id: 20, title: "Rocklets", description: "Chocolates con grageas.", price: 1800, image: "/img/tutorial5.jpg", category: "Chocolate" },
     ]);
       setLoading(false);
     }, 2000);
@@ -82,7 +82,7 @@ const CatalogPage = () => {
         if (!mounted) return;
         const normalizeImageUrl = (u?: string | null) => {
           const s = String(u || '').trim();
-          if (!s) return '/src/assets/img/dulce1.jpg';
+          if (!s) return '/img/dulce1.jpg';
           return s.startsWith('/img/') ? `/src/assets${s}` : s;
         };
         const mapped: Product[] = data.map((p) => ({

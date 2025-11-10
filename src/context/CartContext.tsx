@@ -29,9 +29,8 @@ export const CartProvider = ({ children }: { children: ReactNode }) => {
 
   const normalizeImageUrl = (url?: string | null) => {
     const u = String(url || '').trim();
-    if (!u) return '/src/assets/img/dulce1.jpg';
-    // Si viene como /img/xxx.jpg (semántica de público), mapeamos a assets de desarrollo
-    if (u.startsWith('/img/')) return `/src/assets${u}`; // => /src/assets/img/xxx.jpg
+    if (!u) return '/img/dulce1.jpg';
+    if (u.startsWith('/img/')) return u; // servir directamente desde public/img
     return u;
   };
 
