@@ -5,13 +5,17 @@ const { PrismaClient } = require('@prisma/client');
 
 let prisma;
 
+const clientOptions = {
+  log: ['warn', 'error']
+};
+
 if (process.env.NODE_ENV === 'production') {
   // En producción creamos una única instancia por proceso
-  prisma = new PrismaClient();
+  prisma = new PrismaClient(clientOptions);
 } else {
   // En desarrollo/serverless, cacheamos en global para reusar
   if (!globalThis.__PRISMA__) {
-    globalThis.__PRISMA__ = new PrismaClient();
+    globalThis.__PRISMA__ = new PrismaClient(clientOptions);
   }
   prisma = globalThis.__PRISMA__;
 }
