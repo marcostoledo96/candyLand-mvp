@@ -1,8 +1,4 @@
-// Entry serverless function for /api root
-const serverless = require('serverless-http');
-const app = require('../backend/app');
-module.exports = serverless(app);
-// Función serverless de Vercel que envuelve nuestra app de Express
+// Serverless function for /api root that wraps the Express app
 const serverless = require('serverless-http');
 const app = require('../backend/app');
 
