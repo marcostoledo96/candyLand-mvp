@@ -1,0 +1,3 @@
+# Ignorar funciones duplicadas en CJS
+api/*.cjs
+api/**/*.cjs
