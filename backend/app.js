@@ -31,6 +31,19 @@ app.get('/api/db/health', async (_req, res) => {
   }
 });
 
+// Endpoint de diagnóstico para revisar variables de entorno y conectividad rápida
+app.get('/api/env-check', async (_req, res) => {
+  const dbUrl = process.env.DATABASE_URL;
+  const summary = { hasDatabaseUrl: !!dbUrl, databaseUrlPreview: dbUrl ? dbUrl.slice(0, 50) + '...' : null };
+  try {
+    await prisma.$queryRaw`SELECT 1`;
+    return res.json({ ok: true, prisma: 'reachable', ...summary });
+  } catch (err) {
+    console.error('Env check DB error:', err);
+    return res.status(500).json({ ok: false, prisma: 'error', error: String(err.message || err), ...summary });
+  }
+});
+
 // Helpers
 async function getOrCreateCart(cartId) {
   if (cartId) {

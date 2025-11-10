@@ -3,8 +3,8 @@
   "version": 2,
   "buildCommand": "npx prisma db push --schema backend/prisma/schema.prisma && node backend/prisma/seed.js && npm run build",
   "outputDirectory": "dist",
-  "routes": [
-    { "handle": "filesystem" },
-    { "src": "/(.*)", "dest": "/index.html" }
+  "rewrites": [
+    { "source": "/api/(.*)", "destination": "/api/$1" },
+    { "source": "/(.*)", "has": [ { "type": "header", "key": "accept", "value": ".*text/html.*" } ], "destination": "/index.html" }
   ]
 }
