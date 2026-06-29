@@ -17,6 +17,7 @@ Variables esperadas (ver `backend/AGENTS.md` y `docs/DEPLOY_RAILWAY_VERCEL.md` p
 ```env
 NODE_ENV=production
 PORT=5050
+HOST=0.0.0.0
 DATABASE_URL=postgresql://...
 CORS_ORIGIN=https://candy-land-mvp.vercel.app,http://localhost:5173
 JWT_SECRET=...
@@ -33,7 +34,7 @@ MAIL_TO=...
 1. `npm install`
 2. `npm run prisma:generate` (genera el cliente Prisma)
 3. Migraciones:
-   - Desarrollo: `npx prisma migrate dev` cuando cambies el schema.
+   - Base nueva/desarrollo: `npx prisma migrate dev` para crear/aplicar migraciones antes del seed.
    - Producción (Railway): `npx prisma migrate deploy`. **No** uses `prisma db push` en producción.
 4. Seed (manual, sólo si la base está vacía): `npm run db:seed`
 5. `npm run dev` → arranca en `http://127.0.0.1:5050`
@@ -66,9 +67,10 @@ Algunos endpoints de esta lista son objetivo v2 y todavía pueden no existir en 
 
 ## Deploy (Railway)
 - Root Directory: `backend`.
-- Build: `npm install && npx prisma generate`.
+- Build: `npm install --include=dev && npx prisma generate` (Prisma CLI está en `devDependencies`; el build la necesita para generar el cliente).
 - Start: `npm start`.
-- Migraciones: `npx prisma migrate deploy` (manual o como pre-deploy).
+- Variables mínimas: `DATABASE_URL`, `PORT` y `HOST=0.0.0.0`.
+- Migraciones: `npx prisma migrate deploy` antes del primer seed y en cada deploy con migraciones pendientes.
 - Seed: manual y seguro; no automatizar en cada deploy.
 
 Ver `docs/DEPLOY_RAILWAY_VERCEL.md` para el checklist completo.
