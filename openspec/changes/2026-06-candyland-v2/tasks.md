@@ -19,7 +19,7 @@
 - [ ] 2.4 Confirmar Prisma PostgreSQL.
 - [x] 2.5 Crear/ajustar health checks.
 - [x] 2.6 Documentar `.env.example` backend.
-- [ ] 2.7 Preparar migraciones.
+- [x] 2.7 Preparar migraciones.
 - [ ] 2.8 Verificar local.
 
 ## 3. Vercel separado
@@ -32,7 +32,7 @@
 ## 4. Admin
 
 - [ ] 4.1 Diseñar auth admin.
-- [ ] 4.2 Crear modelo/admin user si falta.
+- [x] 4.2 Crear modelo/admin user si falta.
 - [ ] 4.3 Crear endpoints admin productos.
 - [ ] 4.4 Crear endpoints admin categorías.
 - [ ] 4.5 Crear endpoints admin pedidos.
@@ -41,11 +41,11 @@
 
 ## 5. Productos y stock
 
-- [ ] 5.1 Agregar/confirmar `stock` real.
-- [ ] 5.2 Agregar/confirmar `imageUrl`.
-- [ ] 5.3 Agregar/confirmar `hoverImageUrl`.
+- [x] 5.1 Agregar/confirmar `stock` real.
+- [x] 5.2 Confirmar imagen principal existente (`Product.image`; admin DTO futuro mapeará `imageUrl` ↔ `image`).
+- [x] 5.3 Agregar imagen hover (`Product.hoverImage`; admin DTO futuro mapeará `hoverImageUrl` ↔ `hoverImage`).
 - [ ] 5.4 Validar stock en checkout.
-- [ ] 5.5 Actualizar seed.
+- [x] 5.5 Actualizar seed.
 
 ## 6. Pedidos y emails
 

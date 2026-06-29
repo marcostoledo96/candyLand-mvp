@@ -23,6 +23,9 @@ model Product {
   description String?
   priceCents  Int
   image       String?
+  hoverImage  String?
+  stock       Int       @default(0)
+  active      Boolean   @default(true)
   categoryId  Int
   category    Category  @relation(fields: [categoryId], references: [id])
   cartItems   CartItem[]
@@ -31,6 +34,7 @@ model Product {
   updatedAt   DateTime  @updatedAt
 
   @@index([title])
+  @@index([active])
 }
 
 model Cart {
@@ -102,4 +106,44 @@ model Payment {
   reference String?
   createdAt DateTime      @default(now())
   updatedAt DateTime      @updatedAt
+}
+
+model User {
+  id           Int       @id @default(autoincrement())
+  email        String    @unique
+  passwordHash String
+  role         String    @default("ADMIN")
+  active       Boolean   @default(true)
+  createdAt    DateTime  @default(now())
+  updatedAt    DateTime  @updatedAt
+}
+
+model ContactMessage {
+  id        Int      @id @default(autoincrement())
+  name      String
+  email     String
+  phone     String?
+  message   String
+  createdAt DateTime @default(now())
+}
+
+model JobApplication {
+  id        Int      @id @default(autoincrement())
+  fullName  String
+  email     String
+  phone     String?
+  position  String
+  message   String?
+  cvUrl     String?
+  createdAt DateTime @default(now())
+}
+
+model FranchiseLead {
+  id        Int      @id @default(autoincrement())
+  fullName  String
+  email     String
+  phone     String?
+  city      String
+  message   String?
+  createdAt DateTime @default(now())
 }
