@@ -33,3 +33,9 @@ dist-ssr
 
 # Generated skill registry cache
 .atl/
+
+# SQLite / local DB artifacts (PostgreSQL is the real DB)
+*.db
+*.db-journal
+backend/prisma/*.db
+backend/prisma/*.db-journal
