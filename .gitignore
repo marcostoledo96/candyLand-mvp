@@ -23,5 +23,10 @@ dist-ssr
 *.sln
 *.sw?
 
+# Secrets / environment files
+.env
+.env.*
+!.env.example
+
 # CodeGraph index
 .codegraph/

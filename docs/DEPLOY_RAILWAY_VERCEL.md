@@ -93,17 +93,40 @@ No usar `DATABASE_URL` en Vercel si Vercel sólo compila frontend.
 npm run build
 ```
 
+> **Atención:** Vercel debe ejecutar sólo `npm run build`. No poner `prisma db push`, `prisma migrate deploy` ni `seed` en el build de Vercel porque requieren `DATABASE_URL` y pertenecen al backend/Railway.
+
 ### 3. Output directory
 
 ```text
 dist
 ```
 
-### 4. `vercel.json`
+### 4. `postinstall` del root
+
+El `package.json` root define:
+
+```json
+"postinstall": "prisma generate --schema backend/prisma/schema.prisma"
+```
+
+Vercel ejecuta `postinstall` antes del build aunque falte `DATABASE_URL`. En una receta frontend-only `prisma generate` no necesita `DATABASE_URL` (sólo genera el cliente a partir del schema), pero deja una dependencia frágil. Si se quiere evitar por completo, anular el install en Vercel con:
+
+```env
+INSTALL_COMMAND=npm install --ignore-scripts
+```
+
+o, más seguro, dejar `prisma generate` (no requiere `DATABASE_URL`) y mantener `db push`/`seed` fuera del build de Vercel.
+
+### 5. `vercel.json`
 
 Debe mantener fallback SPA y headers de estáticos, pero no debe enviar `/api` a serverless si Railway ya es la API oficial.
 
-Ejemplo conceptual:
+El `vercel.json` actual reescribe `/api/(.*)` a `/api/index` (serverless). Si Railway pasa a ser la API oficial, revisar si conviene:
+
+1. Quitar la rewrite `/api` para que el frontend llame directo a `VITE_API_URL` (Railway), o
+2. Mantenerla como proxy legacy mientras se migra.
+
+Ejemplo conceptual frontend-only (sin `/api` serverless):
 
 ```json
 {

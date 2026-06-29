@@ -169,16 +169,23 @@ No mezclar en un solo cambio:
 
 ## 12. Verificación mínima antes de finalizar una tarea
 
+Build y lint (bloquea hasta terminar, es seguro):
+
 ```bash
 npm run lint
 npm run build
-
-cd backend
-npm run prisma:generate
-npm run dev
 ```
 
-Probar endpoints:
+Backend: generar cliente Prisma y levantar el server en una terminal aparte
+(no bloquea el bloque siguiente, porque `npm run dev` queda adjunto):
+
+```bash
+cd backend
+npm run prisma:generate
+npm run dev   # terminal dedicada; detener con Ctrl+C tras las pruebas
+```
+
+Desde otra terminal, probar endpoints:
 
 ```bash
 curl http://127.0.0.1:5050/api/health

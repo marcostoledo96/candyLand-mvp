@@ -584,20 +584,20 @@ Criterio de listo:
 Comandos locales:
 
 ```bash
-# Frontend
+# Frontend (build/lint bloquean hasta terminar; dev queda adjunto)
 npm install
 npm run lint
 npm run build
-npm run dev
+npm run dev   # terminal dedicada; detener con Ctrl+C tras las pruebas
 
-# Backend
+# Backend (mismo patrón: dev en terminal dedicada)
 cd backend
 npm install
 npm run prisma:generate
 npm run dev
 ```
 
-Pruebas API:
+Pruebas API (desde otra terminal mientras corren los `npm run dev`):
 
 ```bash
 curl http://127.0.0.1:5050/api/health
