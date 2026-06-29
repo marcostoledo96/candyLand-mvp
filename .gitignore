@@ -30,3 +30,6 @@ dist-ssr
 
 # CodeGraph index
 .codegraph/
+
+# Generated skill registry cache
+.atl/
