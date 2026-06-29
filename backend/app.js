@@ -5,9 +5,13 @@ const cors = require('cors');
 require('dotenv').config();
 const prisma = require('./prismaClient');
 const { randomUUID } = require('crypto');
+const { buildCorsOptions } = require('./utils/runtime');
 
 const app = express();
-app.use(cors());
+// CORS allowlist from CORS_ORIGIN (comma-separated). Falls back to dev origins
+// (localhost + production Vercel domain) so local curl and the deployed frontend work.
+// No-origin requests (curl, health probes) are allowed regardless of origin.
+app.use(cors(buildCorsOptions(process.env)));
 app.use(express.json());
 
 // Ruta base y health para chequeos rápidos

@@ -14,10 +14,10 @@
 ## 2. Backend Railway
 
 - [ ] 2.1 Revisar scripts backend.
-- [ ] 2.2 Ajustar `server.js` a Railway.
-- [ ] 2.3 Configurar CORS por env.
+- [x] 2.2 Ajustar `server.js` a Railway.
+- [x] 2.3 Configurar CORS por env.
 - [ ] 2.4 Confirmar Prisma PostgreSQL.
-- [ ] 2.5 Crear/ajustar health checks.
+- [x] 2.5 Crear/ajustar health checks.
 - [x] 2.6 Documentar `.env.example` backend.
 - [ ] 2.7 Preparar migraciones.
 - [ ] 2.8 Verificar local.
@@ -26,7 +26,7 @@
 
 - [ ] 3.1 Configurar `VITE_API_URL`.
 - [ ] 3.2 Quitar DB/Prisma/seed del build de Vercel.
-- [ ] 3.3 Revisar `api/index.cjs` y marcar deprecated si aplica.
+- [x] 3.3 Revisar `api/index.cjs` y marcar deprecated si aplica.
 - [ ] 3.4 Verificar build frontend.
 
 ## 4. Admin
@@ -73,7 +73,7 @@
 
 - [x] 8.1 `npm run lint`.
 - [x] 8.2 `npm run build`.
-- [ ] 8.3 Backend health local.
+- [x] 8.3 Backend health local.
 - [ ] 8.4 Railway health.
 - [ ] 8.5 Vercel consume Railway.
 - [ ] 8.6 Checkout end-to-end.
