@@ -1,0 +1,67 @@
+schema: spec-driven
+
+context: |
+  Proyecto: CandyLand MVP v2.
+  Stack frontend: React + Vite + TypeScript + React Router.
+  Stack backend: Node.js + Express + Prisma.
+  Base de datos: PostgreSQL exclusivamente en Railway.
+  Deploy frontend: Vercel.
+  Deploy backend: Railway, root directory backend/.
+  Proyecto principal local: /home/marcos/Escritorio/CandyLand/CandyLand/candyLand-mvp
+  Referencia visual/assets local: /home/marcos/Escritorio/CandyLand/CandyLand_Macarena/tienda-candyland
+  Dominio frontend actual: https://candy-land-mvp.vercel.app/
+  Marca final: CandyLand.
+  Tema: modo claro únicamente.
+  Forma de trabajo: OpenCode + Gentle AI + Engram + CodeGraph.
+
+strict_tdd: true
+
+rules:
+  proposal:
+    - Incluir impacto en frontend, backend, DB, deploy y documentación.
+    - Incluir plan de rollback para migraciones, auth admin y deploy.
+    - No proponer cambios incompatibles con las decisiones cerradas.
+  specs:
+    - Usar formato Given/When/Then.
+    - Usar MUST, SHOULD, MAY para requisitos.
+    - Separar requisitos públicos, admin, backend y deploy.
+  design:
+    - Documentar arquitectura antes de tocar archivos críticos.
+    - No mezclar migraciones DB con rediseño visual grande en el mismo cambio.
+    - Preferir cambios incrementales verificables.
+  tasks:
+    - Agrupar por fase: documentación, backend, DB, frontend, admin, deploy, QA.
+    - Mantener tareas chicas para una sesión de OpenCode.
+    - Cada tarea debe tener criterio de aceptación.
+  apply:
+    - Usar CodeGraph antes de leer muchos archivos.
+    - Respetar AGENTS.md y docs/DECISIONES_CERRADAS.md.
+    - Mantener React y TypeScript en frontend.
+    - Mantener Express/Prisma en backend.
+    - No agregar dark mode, WhatsApp, Mercado Pago, tarjetas ni detalle de producto.
+  verify:
+    - Ejecutar npm run lint si existe.
+    - Ejecutar npm run build.
+    - Verificar backend health y db health local.
+    - Verificar que Vercel no ejecute Prisma/seed/db push.
+    - Verificar que Railway use process.env.PORT.
+  archive:
+    - Actualizar docs después de cambios de arquitectura.
+    - Guardar memoria en Engram con decisiones y próximos pasos.
+
+testing:
+  strict_tdd: true
+  runner:
+    frontend:
+      command: "npm run build"
+      framework: "Vite/TypeScript build"
+    backend:
+      command: "cd backend && npm run prisma:generate"
+      framework: "Prisma generate + health checks"
+  quality:
+    linter:
+      command: "npm run lint"
+      required_if_available: true
+    type_checker:
+      command: "npm run build"
+      required: true
