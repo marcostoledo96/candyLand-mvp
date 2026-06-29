@@ -128,11 +128,11 @@ o, más seguro, dejar `prisma generate` (no requiere `DATABASE_URL`) y mantener 
 so the frontend calls the Railway backend directly via `VITE_API_URL`. The SPA
 fallback and static-asset cache headers are preserved.
 
-The legacy `api/index.cjs` serverless function is deprecated (kept for rollback
-safety, not routed). It is also excluded by `.vercelignore` (`api/*.cjs`), so
-Vercel does not deploy that CJS function while the frontend-only config is in
-place. It can be deleted once the Railway backend is confirmed stable in
-production.
+The legacy `api/` serverless surface is deprecated (kept for rollback safety,
+not routed). It is also excluded by `.vercelignore` (`api/*.js`, `api/**/*.js`,
+`api/*.cjs`, `api/**/*.cjs`, `api/package.json`), so Vercel does not deploy JS
+or CJS API functions while the frontend-only config is in place. These files can
+be deleted once the Railway backend is confirmed stable in production.
 
 Current `vercel.json` rewrites only the SPA fallback (no `/api`):
 
