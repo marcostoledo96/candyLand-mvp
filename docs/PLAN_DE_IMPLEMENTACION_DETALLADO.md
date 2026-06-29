@@ -13,6 +13,7 @@
 | Cambio | Archivos estimados |
 |---|---|
 | Actualizar `README.md` (quitar Neon/serverless, agregar Railway/Vercel separados) | `README.md` |
+| Actualizar o deprecar `backend/README.md` (hoy menciona Neon, `db push` y Vercel serverless) | `backend/README.md` |
 | Actualizar `backend/.env.example` a PostgreSQL + variables Railway | `backend/.env.example` |
 | Eliminar `backend/prisma/dev.db` del repo y agregar a `.gitignore` | `.gitignore`, borrar archivo |
 | Limpiar assets duplicados en `src/assets/img` si no se usan | `src/assets/img/*` |
@@ -34,7 +35,7 @@
 |---|---|
 | `backend/server.js`: host `0.0.0.0`, escuchar `process.env.PORT` | `backend/server.js` |
 | `backend/app.js`: CORS restringido por `CORS_ORIGIN` | `backend/app.js` |
-| Deprecar `api/index.cjs` (mover a `api/index.cjs.deprecated` o eliminar) | `api/index.cjs`, `vercel.json` |
+| Deprecar/eliminar toda la superficie serverless de `api/` (`index.cjs`, `index.js`, `[...path].cjs`, `[...path].js`, `ping.js`, `api/package.json`) o documentar explícitamente qué queda legacy | `api/*`, `vercel.json` |
 | `vercel.json`: frontend-only, sin rewrite `/api` | `vercel.json` |
 | Quitar `serverless-http` de `package.json` root | `package.json` |
 | Agregar `backend/.env.example` con variables Railway completas | `backend/.env.example` |
@@ -56,17 +57,19 @@
 | Cambio | Archivos estimados |
 |---|---|
 | Agregar `User` al schema (admin) | `backend/prisma/schema.prisma` |
-| Agregar `stock`, `active`, `hoverImage` a `Product` | `backend/prisma/schema.prisma` |
+| Agregar `stock`, `active`, `hoverImage` a `Product` con defaults/backfill seguro para filas existentes antes de imponer `NOT NULL` | `backend/prisma/schema.prisma`, migración SQL |
 | Agregar modelo `ContactMessage` | `backend/prisma/schema.prisma` |
 | Agregar modelos `JobApplication` y `FranchiseLead` | `backend/prisma/schema.prisma` |
-| Generar migración Prisma | `backend/prisma/migrations/*` |
+| Generar migración Prisma contra una base PostgreSQL descartable de desarrollo, nunca contra datos compartidos/producción | `backend/prisma/migrations/*` |
 | Actualizar `seed.js` para setear `stock` y `active` | `backend/prisma/seed.js` |
 
 - **Líneas estimadas:** 250–450
 - **Riesgo:** medio (migraciones DB)
 - **Testing manual:**
-  - `cd backend && npx prisma migrate dev --name admin_stock_forms`
-  - `cd backend && npm run seed`
+  - Crear/generar la migración usando una base PostgreSQL descartable de desarrollo (por ejemplo una DB Railway dev separada), no la base compartida ni producción.
+  - Revisar que la migración incluya defaults/backfill para `Product.stock` y `Product.active` antes de `NOT NULL`.
+  - Aplicar en Railway con `cd backend && npx prisma migrate deploy`.
+  - Ejecutar seed manual sólo donde corresponda: `cd backend && npm run seed`.
   - Verificar tablas en Prisma Studio: `User`, `Product.stock`, `Product.active`, `ContactMessage`, etc.
   - `curl http://127.0.0.1:5050/api/productos` sigue funcionando.
 
@@ -82,12 +85,13 @@
 | `GET/POST/PATCH/DELETE /api/admin/products` | `backend/routes/admin.js` |
 | `GET/POST/PATCH/DELETE /api/admin/categories` | `backend/routes/admin.js` |
 | `GET /api/admin/orders` + `PATCH /api/admin/orders/:id` | `backend/routes/admin.js` |
-| Script/seed para crear usuario admin inicial | `backend/prisma/seed.js` |
+| Crear usuario admin inicial desde variables de entorno o comando manual one-shot; fallar/omitir de forma segura si faltan variables | `backend/prisma/seed.js` o script admin |
 
 - **Líneas estimadas:** 400–700
 - **Riesgo:** alto (seguridad)
 - **Testing manual:**
-  - Login con credenciales de seed → recibir JWT.
+  - Configurar credenciales admin por variables de entorno o comando manual; no hardcodearlas en el repo.
+  - Login con esas credenciales → recibir JWT.
   - Crear/editar producto con imagen URL.
   - Listar categorías y pedidos.
   - Verificar que endpoints admin fallan sin token.
@@ -125,8 +129,8 @@
 
 | Cambio | Archivos estimados |
 |---|---|
-| Validar `stock >= quantity` en `POST /api/orders/confirm` | `backend/app.js` |
-| Decrementar stock al confirmar orden | `backend/app.js` |
+| Validar stock y decrementar de forma atómica dentro de una transacción/actualización condicional para evitar overselling concurrente | `backend/app.js` |
+| Crear orden, items, pago y limpieza/reserva de carrito en la misma unidad transaccional cuando aplique | `backend/app.js` |
 | Servicio de email desacoplado (`services/email.js`) | `backend/services/email.js` |
 | Resend como provider, fallback noop/SMTP | `backend/services/email.js` |
 | Enviar email de orden confirmada (si hay provider configurado) | `backend/app.js` |
@@ -138,6 +142,7 @@
   - Crear carrito, checkout, seleccionar pago, confirmar orden.
   - Verificar que el stock del producto disminuye.
   - Verificar que con stock insuficiente la orden falla con 400.
+  - Probar dos confirmaciones simultáneas del mismo producto con stock bajo: una debe fallar y el stock no debe quedar negativo.
   - Con `EMAIL_PROVIDER=noop`, la orden sigue funcionando.
   - Con `EMAIL_PROVIDER=resend` + API key real, llega email.
 
@@ -156,14 +161,16 @@
 | Actualizar `src/components/Header/Header.tsx` con 6 links | `src/components/Header/Header.tsx` |
 | Actualizar `src/components/Footer/Footer.tsx` con `Link` reales | `src/components/Footer/Footer.tsx` |
 | Funciones API en `src/lib/api.ts` para endpoints nuevos | `src/lib/api.ts` |
+| Conectar el formulario existente de `/contacto` a `POST /api/contact` | `src/components/Contact/Contacto.tsx` |
 
 - **Líneas estimadas:** 500–800
 - **Riesgo:** medio
+- **Dependencias:** requiere PR-5 (`GET /api/categories`, `POST /api/contact`, `POST /api/jobs/applications`, `POST /api/franchise/leads`) y, si los formularios persisten en DB, PR-3 con las tablas correspondientes.
 - **Testing manual:**
   - Navegar todas las rutas desde header y footer.
   - `/menu` muestra categorías reales de la API.
   - `/tutoriales` muestra 6 tarjetas visuales.
-  - Formularios de `/franquicias` y `/trabaja-con-nosotros` envían datos y muestran éxito/error.
+  - Formularios de `/contacto`, `/franquicias` y `/trabaja-con-nosotros` envían datos y muestran éxito/error.
   - `npm run build` pasa.
   - Mobile: menú hamburguesa funciona.
 
@@ -265,13 +272,16 @@
 ```
 PR-1 (docs)
    |
-PR-2 (deploy backend) ──┬── PR-3 (schema) ──┬── PR-4 (admin) ──┐
-                        │                    │                  │
-                        └── PR-5 (forms) ────┘                  ├── PR-6 (orders)
-                        │                                        │
-                        └── PR-7 (frontend routes) ─── PR-8 (home) ─── PR-9 (admin UI)
-                                                                  │
-PR-10 (checkout fixes) <──────────────────────────────────────────┘
+PR-2 (deploy backend) ──┬── PR-3 (schema + safe migrations) ──┬── PR-4 (admin) ──┐
+                        │                                      │                  │
+                        └── PR-5 (public endpoints/forms) ─────┘                  ├── PR-6 (orders)
+                                                               │                  │
+                                                               └── PR-7 (frontend routes + contact form)
+                                                                       │
+                                                                       ├── PR-8 (home)
+                                                                       └── PR-9 (admin UI)
+                                                                              │
+PR-10 (checkout fixes) <───────────────────────────────────────────────────────┘
    |
 PR-11 (deploy final)
 ```

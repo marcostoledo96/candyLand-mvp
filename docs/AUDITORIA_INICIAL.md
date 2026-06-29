@@ -144,7 +144,7 @@ No hay bloqueadores técnicos graves; el principal riesgo es **mezclar migracion
 | Elemento | Estado | Evidencia |
 |---|---|---|
 | `vercel.json` | Serverless legacy | rewrite `/api/(.*)` → `/api/index` |
-| `api/index.cjs` | Existe | Bridge serverless con `serverless-http` |
+| `api/*` | Existe | Varios entrypoints serverless (`index.cjs`, `index.js`, `[...path].cjs`, `[...path].js`, `ping.js`) que mantienen backend bajo Vercel `/api` |
 | `postinstall` root | Genera Prisma client | `package.json` |
 | Scripts root con db push/seed | Existen | `db:migrate:deploy`, `db:seed`, `db:reset` |
 | Backend package.json | OK | `start`, `dev`, `prisma:generate`, `seed` |
@@ -155,7 +155,7 @@ No hay bloqueadores técnicos graves; el principal riesgo es **mezclar migracion
 
 | Elemento | Acción | Justificación |
 |---|---|---|
-| `api/index.cjs` | Deprecar/eliminar después de confirmar Railway | Vercel no debe correr backend. |
+| `api/*` serverless | Deprecar/eliminar después de confirmar Railway, o documentar explícitamente cualquier handler legacy que quede | Vercel no debe correr backend. |
 | `vercel.json` rewrite `/api/(.*)` | Eliminar | Frontend llamará directo a `VITE_API_URL`. |
 | `serverless-http` dependency root | Eliminar | Solo era para `api/index.cjs`. |
 | `DATABASE_URL` en Vercel | No configurar | Vercel solo compila frontend. |
@@ -222,7 +222,7 @@ VITE_API_URL=https://<backend>.up.railway.app
 | `docs/CODEGRAPH_INIT.md` | Actualizado | Indica inicializar CodeGraph. |
 | `docs/ENGRAM_GUIDE.md` | Actualizado | Guía de memoria. |
 | `README.md` | **Desactualizado** | Menciona Neon, serverless, `/api/index.cjs`. Requiere actualización. |
-| `backend/README.md` | No auditado | Verificar si también menciona Neon/SQLite. |
+| `backend/README.md` | **Desactualizado** | Menciona Neon, `prisma db push` y Vercel serverless. |
 | `backend/.env.example` | **Desactualizado** | SQLite en lugar de PostgreSQL. |
 | `src/AGENTS.md` | Actualizado | Rutas obligatorias claras. |
 | `openspec/specs/*` | Actualizados | 4 specs alineadas. |
