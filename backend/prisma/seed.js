@@ -26,7 +26,8 @@ async function main() {
 
   // Productos de ejemplo (precios en pesos * 100 → cents)
   // Asignamos imágenes que coincidan con título y categoría.
-  // stock y active se setean explícitamente para PR-3 (stock real + activación).
+  // stock y active se setean sólo al crear productos demo.
+  // Si el seed se re-ejecuta, no debe pisar stock real ni productos desactivados por admin.
   // hoverImage se omite por defecto (nullable); admin puede setearlo luego.
   const products = [
     { title: 'Caramelos Frutales', description: 'Caramelos con sabores frutales.', price: 1200, image: '/img/caramelos3.jpg', category: 'Caramelos', stock: 50 },
@@ -65,14 +66,12 @@ async function main() {
       description: p.description,
       priceCents: Math.round(p.price * 100),
       image: p.image,
-      stock: p.stock,
-      active: true,
       category: { connect: { name: p.category } },
     };
     if (existing) {
       await prisma.product.update({ where: { id: existing.id }, data });
     } else {
-      await prisma.product.create({ data });
+      await prisma.product.create({ data: { ...data, stock: p.stock, active: true } });
     }
   }
 

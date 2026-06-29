@@ -74,10 +74,10 @@ function run() {
   const userModel = extractModel(schema, 'User');
   assert.match(userModel, /passwordHash\s+String/, 'User MUST use passwordHash (not password)');
 
-  // Edge case 8: seed sets stock and active on products.
+  // Edge case 8: seed initializes stock/active only on create, not on update.
   const seed = fs.readFileSync(seedPath, 'utf8');
-  assert.match(seed, /stock:\s*p\.stock/, 'seed MUST set stock from product data');
-  assert.match(seed, /active:\s*true/, 'seed MUST set active: true on products');
+  assert.match(seed, /create\(\{\s*data:\s*\{\s*\.\.\.data,\s*stock:\s*p\.stock,\s*active:\s*true\s*\}\s*\}\)/s, 'seed MUST initialize stock/active when creating products');
+  assert.match(seed, /update\(\{\s*where:\s*\{\s*id:\s*existing\.id\s*\},\s*data\s*\}\)/s, 'seed update path MUST reuse base data only');
 
   // Edge case 9: new models have createdAt timestamps.
   assert.match(extractModel(schema, 'ContactMessage'), /createdAt\s+DateTime/, 'ContactMessage MUST have createdAt');
