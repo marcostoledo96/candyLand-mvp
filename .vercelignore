@@ -1,3 +1,6 @@
-# Ignorar funciones duplicadas en CJS
+# Vercel is frontend-only. Do not deploy legacy API/serverless handlers.
+api/*.js
+api/**/*.js
 api/*.cjs
 api/**/*.cjs
+api/package.json

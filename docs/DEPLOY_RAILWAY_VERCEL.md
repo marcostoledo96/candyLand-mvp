@@ -124,30 +124,25 @@ o, más seguro, dejar `prisma generate` (no requiere `DATABASE_URL`) y mantener 
 
 ### 5. `vercel.json`
 
-Debe mantener fallback SPA y headers de estáticos, pero no debe enviar `/api` a serverless si Railway ya es la API oficial.
+`vercel.json` is now frontend-only: the `/api` serverless rewrite has been removed
+so the frontend calls the Railway backend directly via `VITE_API_URL`. The SPA
+fallback and static-asset cache headers are preserved.
 
-El `vercel.json` actual reescribe `/api/(.*)` a `/api/index` (serverless). Si Railway pasa a ser la API oficial, revisar si conviene:
+The legacy `api/` serverless surface is deprecated (kept for rollback safety,
+not routed). It is also excluded by `.vercelignore` (`api/*.js`, `api/**/*.js`,
+`api/*.cjs`, `api/**/*.cjs`, `api/package.json`), so Vercel does not deploy JS
+or CJS API functions while the frontend-only config is in place. These files can
+be deleted once the Railway backend is confirmed stable in production.
 
-1. Quitar la rewrite `/api` para que el frontend llame directo a `VITE_API_URL` (Railway), o
-2. Mantenerla como proxy legacy mientras se migra.
-
-Ejemplo conceptual frontend-only (sin `/api` serverless):
+Current `vercel.json` rewrites only the SPA fallback (no `/api`):
 
 ```json
 {
-  "version": 2,
-  "buildCommand": "npm run build",
-  "outputDirectory": "dist",
   "rewrites": [
-    {
-      "source": "/((?!assets/|img/).*)",
-      "destination": "/index.html"
-    }
+    { "source": "/((?!api/).*)", "has": [ { "type": "header", "key": "accept", "value": ".*text/html.*" } ], "destination": "/index.html" }
   ]
 }
 ```
-
-Revisar el `vercel.json` real antes de reemplazarlo.
 
 ## CORS
 
