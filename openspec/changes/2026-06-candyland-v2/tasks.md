@@ -18,7 +18,7 @@
 - [ ] 2.3 Configurar CORS por env.
 - [ ] 2.4 Confirmar Prisma PostgreSQL.
 - [ ] 2.5 Crear/ajustar health checks.
-- [ ] 2.6 Documentar `.env.example` backend.
+- [x] 2.6 Documentar `.env.example` backend.
 - [ ] 2.7 Preparar migraciones.
 - [ ] 2.8 Verificar local.
 
@@ -71,12 +71,12 @@
 
 ## 8. QA/deploy
 
-- [ ] 8.1 `npm run lint`.
-- [ ] 8.2 `npm run build`.
+- [x] 8.1 `npm run lint`.
+- [x] 8.2 `npm run build`.
 - [ ] 8.3 Backend health local.
 - [ ] 8.4 Railway health.
 - [ ] 8.5 Vercel consume Railway.
 - [ ] 8.6 Checkout end-to-end.
 - [ ] 8.7 Admin end-to-end.
-- [ ] 8.8 Actualizar README.
+- [x] 8.8 Actualizar README.
 - [ ] 8.9 Guardar memoria Engram final.

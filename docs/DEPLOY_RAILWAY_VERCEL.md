@@ -25,6 +25,7 @@ backend
 
 ```env
 NODE_ENV=production
+HOST=0.0.0.0
 DATABASE_URL=${{Postgres.DATABASE_URL}}
 CORS_ORIGIN=https://candy-land-mvp.vercel.app,http://localhost:5173
 JWT_SECRET=...
@@ -42,8 +43,10 @@ MAIL_TO=marcos@example.com
 Build command recomendado si hace falta:
 
 ```bash
-npm install && npx prisma generate
+npm install --include=dev && npx prisma generate
 ```
+
+> Prisma CLI está en `backend/devDependencies`; el build debe instalar dev deps o proveer Prisma CLI de otra forma para poder generar el cliente.
 
 Start command:
 
@@ -58,6 +61,8 @@ npx prisma migrate deploy
 ```
 
 Según cómo quede Railway configurado, ejecutar migraciones como pre-deploy/runtime command o manualmente desde Railway/CLI. No meter migraciones dentro del build de Vercel.
+
+> Antes del primer seed en una base nueva, aplicar migraciones. `prisma generate` sólo genera cliente; no crea tablas.
 
 ### 4. Seed manual
 

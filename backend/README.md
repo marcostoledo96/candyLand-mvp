@@ -1,43 +1,76 @@
-CandyLand Backend (Express + Prisma)
+# CandyLand Backend (Express + Prisma)
 
-Contexto
-- Esto vive dentro del monorepo principal (`/candyLand`). El frontend está en la raíz con Vite.
-- Usamos PostgreSQL (Neon) en `.env` con `DATABASE_URL` y Prisma como ORM.
+Backend long-running de CandyLand. Vive dentro del monorepo principal (`/candyLand-mvp`); el frontend está en la raíz con Vite.
 
-Cómo correrlo local
-1) Variables de entorno
-   - Copiá `.env.example` a `.env` y ajustá `DATABASE_URL`. Por defecto usamos Neon.
-   - `PORT` (por defecto 5050) y datos bancarios para el paso de pago.
+## Stack
+- Node.js + Express + Prisma.
+- PostgreSQL (Railway en producción, PostgreSQL local en desarrollo).
+- App **long-running**: debe escuchar `process.env.PORT` (default `5050`) en host `0.0.0.0` para Railway. No es serverless.
 
-2) Dependencias y Prisma
-   - `npm install`
-   - `npx prisma generate`
-   - Inicial: `npx prisma db push` (sin migraciones SQLite) y `node prisma/seed.js`
+> Nota histórica: una versión anterior desplegaba este backend como función serverless en Vercel usando `api/index.cjs`. Esa vía está **deprecada**; la API oficial vive en Railway.
 
-3) Backend dev
-   - `npm run dev` (arranca en `http://127.0.0.1:5050`)
-   - Health: `GET /api/health` devuelve `ok`
+## Variables de entorno
+Copiá `.env.example` a `.env` y completá los valores. Nunca commitees `.env`.
 
-Notas técnicas
-- El archivo `backend/app.js` exporta la app de Express sin levantar el servidor (sirve para serverless).
-- `backend/server.js` sólo levanta el HTTP local y usa `app.js`.
-- Prisma está instanciado como singleton en `backend/prismaClient.js` para evitar conexiones de más en serverless.
+Variables esperadas (ver `backend/AGENTS.md` y `docs/DEPLOY_RAILWAY_VERCEL.md` para el detalle):
 
-Endpoints
-- GET /api  → { "message": "API ok" }
-- GET /api/productos → lista todos los productos
-- POST /api/carrito → agregar producto (usa query ?cartId=)
-- POST /api/checkout → guarda datos del comprador
-- POST /api/payment-method → método de pago
-- POST /api/orders/confirm → confirma orden
+```env
+NODE_ENV=production
+PORT=5050
+HOST=0.0.0.0
+DATABASE_URL=postgresql://...
+CORS_ORIGIN=https://candy-land-mvp.vercel.app,http://localhost:5173
+JWT_SECRET=...
+BANK_ALIAS=...
+BANK_CBU=...
+BANK_TITULAR=...
+EMAIL_PROVIDER=resend
+RESEND_API_KEY=...
+MAIL_FROM=...
+MAIL_TO=...
+```
 
-Deploy en Vercel (resumen)
-- En la raíz hay `vercel.json` con:
-   - build de Vite → `dist/`
-   - función serverless catch-all: `api/[...path].cjs` (atiende todas las rutas `/api/*` con Express)
-   - fallback SPA a `/index.html`
-- Variables de entorno a cargar en Vercel:
-  - `DATABASE_URL` (Neon, con `sslmode=require`)
-  - `BANK_ALIAS`, `BANK_CBU`, `BANK_TITULAR` si usás transferencia
-- El `postinstall` del `package.json` raíz corre `prisma generate` con el schema del backend.
+## Cómo correrlo local
+1. `npm install`
+2. `npm run prisma:generate` (genera el cliente Prisma)
+3. Migraciones:
+   - Base nueva/desarrollo: `npx prisma migrate dev` para crear/aplicar migraciones antes del seed.
+   - Producción (Railway): `npx prisma migrate deploy`. **No** uses `prisma db push` en producción.
+4. Seed (manual, sólo si la base está vacía): `npm run db:seed`
+5. `npm run dev` → arranca en `http://127.0.0.1:5050`
 
+> Corré el backend en una terminal dedicada. El frontend se levanta aparte desde la raíz con `npm run dev`.
+
+## Health checks
+- `GET /api/health` → `ok`
+- `GET /api/db/health` → estado de la conexión PostgreSQL
+
+## Endpoints públicos esperados para v2
+- `GET /api/productos`
+- `GET /api/categories`
+- `POST /api/carrito`
+- `POST /api/checkout`
+- `POST /api/orders/confirm`
+- `POST /api/contact`
+- `POST /api/jobs/applications`
+- `POST /api/franchise/leads`
+
+Algunos endpoints de esta lista son objetivo v2 y todavía pueden no existir en el código actual. Ver `backend/AGENTS.md` para la lista completa (incluye endpoints admin protegidos por JWT).
+
+## Notas técnicas
+- `backend/app.js` exporta la app de Express sin levantar el servidor (útil para tests/import).
+- `backend/server.js` levanta el HTTP local/producción y usa `app.js`.
+- Prisma es un singleton en `backend/prismaClient.js` para reutilizar la conexión.
+- CORS debe controlarse con `CORS_ORIGIN` (lista de orígenes separados por coma) en la fase de separación Railway/Vercel.
+- No exponer stack traces al cliente.
+- Métodos de pago: transferencia o efectivo. No Mercado Pago, no tarjetas.
+
+## Deploy (Railway)
+- Root Directory: `backend`.
+- Build: `npm install --include=dev && npx prisma generate` (Prisma CLI está en `devDependencies`; el build la necesita para generar el cliente).
+- Start: `npm start`.
+- Variables mínimas: `DATABASE_URL`, `PORT` y `HOST=0.0.0.0`.
+- Migraciones: `npx prisma migrate deploy` antes del primer seed y en cada deploy con migraciones pendientes.
+- Seed: manual y seguro; no automatizar en cada deploy.
+
+Ver `docs/DEPLOY_RAILWAY_VERCEL.md` para el checklist completo.
