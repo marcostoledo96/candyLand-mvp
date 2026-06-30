@@ -11,7 +11,8 @@
     "prisma:migrate": "prisma migrate dev --name init",
     "prisma:studio": "prisma studio",
     "seed": "node prisma/seed.js",
-    "db:seed": "prisma db seed"
+    "db:seed": "prisma db seed",
+    "create-admin": "node scripts/create-admin.js"
   },
   "prisma": {
     "seed": "node prisma/seed.js"

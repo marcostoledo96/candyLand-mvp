@@ -31,13 +31,13 @@
 
 ## 4. Admin
 
-- [ ] 4.1 Diseñar auth admin.
+- [x] 4.1 Diseñar auth admin.
 - [x] 4.2 Crear modelo/admin user si falta.
-- [ ] 4.3 Crear endpoints admin productos.
-- [ ] 4.4 Crear endpoints admin categorías.
-- [ ] 4.5 Crear endpoints admin pedidos.
+- [x] 4.3 Crear endpoints admin productos.
+- [ ] 4.4 Crear endpoints admin categorías. (deferred to follow-up branch)
+- [ ] 4.5 Crear endpoints admin pedidos. (deferred to follow-up branch)
 - [ ] 4.6 Crear pantallas admin.
-- [ ] 4.7 Proteger rutas admin.
+- [x] 4.7 Proteger rutas admin.
 
 ## 5. Productos y stock
 
