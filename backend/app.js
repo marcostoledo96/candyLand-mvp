@@ -361,7 +361,7 @@ app.get('/api/productos/:id', async (req, res) => {
   }
 });
 
-// Admin routes (login, me, products CRUD). Categories/orders are deferred.
+// Admin routes (login, me, products, categories, and orders CRUD).
 app.use('/api', adminRoutes.router);
 
 module.exports = app;
