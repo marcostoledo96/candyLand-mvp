@@ -200,6 +200,91 @@ test('validateProductInput allows optional fields to be absent', () => {
   assert.equal(r.ok, true);
 });
 
+// --- PR-6 regression checks (Codex feedback) ---
+console.log('\nproduct validation regressions (PR-6):');
+test('rejects non-string title (null) instead of coercing via String(...)', () => {
+  const r = validateProductInput({ title: null, priceCents: 100, categoryId: 1 });
+  assert.equal(r.ok, false);
+  assert.ok(r.errors.some((e) => e.includes('title')), 'MUST flag title error');
+  assert.equal(r.normalized.title, undefined, 'MUST NOT set normalized.title');
+});
+
+test('rejects non-string title (number) instead of coercing via String(...)', () => {
+  const r = validateProductInput({ title: 123, priceCents: 100, categoryId: 1 });
+  assert.equal(r.ok, false);
+  assert.ok(r.errors.some((e) => e.includes('title MUST be a string')));
+});
+
+test('rejects priceCents null (Number(null)===0 trap)', () => {
+  const r = validateProductInput({ title: 'X', priceCents: null, categoryId: 1 });
+  assert.equal(r.ok, false);
+  assert.ok(r.errors.some((e) => e.includes('priceCents')));
+  assert.equal(r.normalized.priceCents, undefined);
+});
+
+test('rejects priceCents empty string (Number("")===0 trap)', () => {
+  const r = validateProductInput({ title: 'X', priceCents: '', categoryId: 1 });
+  assert.equal(r.ok, false);
+  assert.ok(r.errors.some((e) => e.includes('priceCents')));
+});
+
+test('rejects priceCents whitespace string (Number("   ")===0 trap)', () => {
+  const r = validateProductInput({ title: 'X', priceCents: '   ', categoryId: 1 });
+  assert.equal(r.ok, false);
+  assert.ok(r.errors.some((e) => e.includes('priceCents')));
+});
+
+test('rejects priceCents arrays (Number([])===0 / Number(["25"])===25 traps)', () => {
+  const emptyArray = validateProductInput({ title: 'X', priceCents: [], categoryId: 1 });
+  const valueArray = validateProductInput({ title: 'X', priceCents: ['25'], categoryId: 1 });
+  assert.equal(emptyArray.ok, false);
+  assert.equal(valueArray.ok, false);
+  assert.ok(emptyArray.errors.some((e) => e.includes('priceCents')));
+  assert.ok(valueArray.errors.some((e) => e.includes('priceCents')));
+});
+
+test('rejects priceCents boolean (Number(true)===1 trap)', () => {
+  const r = validateProductInput({ title: 'X', priceCents: true, categoryId: 1 });
+  assert.equal(r.ok, false);
+  assert.ok(r.errors.some((e) => e.includes('priceCents')));
+});
+
+test('accepts active boolean true', () => {
+  const r = validateProductInput({ title: 'X', priceCents: 100, categoryId: 1, active: true });
+  assert.equal(r.ok, true);
+  assert.equal(r.normalized.active, true);
+});
+
+test('accepts active boolean false', () => {
+  const r = validateProductInput({ title: 'X', priceCents: 100, categoryId: 1, active: false });
+  assert.equal(r.ok, true);
+  assert.equal(r.normalized.active, false, 'boolean false MUST stay false');
+});
+
+test('accepts active string "false" and parses to boolean false', () => {
+  const r = validateProductInput({ title: 'X', priceCents: 100, categoryId: 1, active: 'false' });
+  assert.equal(r.ok, true);
+  assert.equal(r.normalized.active, false, '"false" string MUST parse to false (not Boolean("false")===true)');
+});
+
+test('accepts active string "true" and parses to boolean true', () => {
+  const r = validateProductInput({ title: 'X', priceCents: 100, categoryId: 1, active: 'true' });
+  assert.equal(r.ok, true);
+  assert.equal(r.normalized.active, true);
+});
+
+test('rejects active other strings (e.g. "yes", "0")', () => {
+  const r = validateProductInput({ title: 'X', priceCents: 100, categoryId: 1, active: 'yes' });
+  assert.equal(r.ok, false);
+  assert.ok(r.errors.some((e) => e.includes('active')));
+});
+
+test('rejects active number (no coercion)', () => {
+  const r = validateProductInput({ title: 'X', priceCents: 100, categoryId: 1, active: 1 });
+  assert.equal(r.ok, false);
+  assert.ok(r.errors.some((e) => e.includes('active')));
+});
+
 if (process.exitCode) {
   console.error('\nadmin-auth tests FAILED');
 } else {

@@ -174,6 +174,16 @@ app.post('/api/orders/confirm', async (req, res) => {
     if (!cart.items.length) return res.status(400).json({ error: 'El carrito está vacío' });
     if (!cart.paymentMethod) return res.status(400).json({ error: 'Falta seleccionar método de pago' });
 
+    // Reject confirmation if any cart product was admin soft-deleted (active=false).
+    // This prevents orders referencing products that became unavailable after add-to-cart.
+    const inactiveItems = cart.items.filter((it) => it.product.active === false);
+    if (inactiveItems.length) {
+      return res.status(400).json({
+        error: 'El carrito contiene productos no disponibles',
+        inactiveProducts: inactiveItems.map((it) => ({ productId: it.productId, title: it.product.title })),
+      });
+    }
+
     const totalCents = cart.items.reduce((acc, it) => acc + it.quantity * it.product.priceCents, 0);
     const prefix = 'CL-';
     const rnd = Math.floor(100000 + Math.random() * 900000);

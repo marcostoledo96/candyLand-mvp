@@ -69,19 +69,33 @@ function validateProductInput(input, { partial = false } = {}) {
 
   // title
   if (v.title !== undefined) {
-    const t = String(v.title).trim();
-    if (t.length === 0) errors.push('title MUST be non-empty');
-    else if (t.length > 200) errors.push('title MUST be at most 200 chars');
-    else normalized.title = t;
+    if (typeof v.title !== 'string') errors.push('title MUST be a string');
+    else {
+      const t = v.title.trim();
+      if (t.length === 0) errors.push('title MUST be non-empty');
+      else if (t.length > 200) errors.push('title MUST be at most 200 chars');
+      else normalized.title = t;
+    }
   } else if (!partial) {
     errors.push('title is required');
   }
 
   // priceCents
   if (v.priceCents !== undefined) {
-    const p = Number(v.priceCents);
-    if (!Number.isInteger(p) || p < 0) errors.push('priceCents MUST be a non-negative integer');
-    else normalized.priceCents = p;
+    // Reject null/empty/non-number before coercion: Number('') === 0, Number(null) === 0.
+    if (
+      v.priceCents === null
+      || typeof v.priceCents === 'boolean'
+      || Array.isArray(v.priceCents)
+      || (typeof v.priceCents === 'string' && v.priceCents.trim() === '')
+      || (typeof v.priceCents !== 'string' && typeof v.priceCents !== 'number')
+    ) {
+      errors.push('priceCents MUST be a non-negative integer');
+    } else {
+      const p = Number(v.priceCents);
+      if (!Number.isInteger(p) || p < 0) errors.push('priceCents MUST be a non-negative integer');
+      else normalized.priceCents = p;
+    }
   } else if (!partial) {
     errors.push('priceCents is required');
   }
@@ -120,9 +134,16 @@ function validateProductInput(input, { partial = false } = {}) {
     else normalized.description = v.description;
   }
 
-  // active (optional, defaults true on create)
+  // active (optional, defaults true on create). Accept booleans and the
+  // strings "true"/"false"; reject everything else (Boolean("false") === true).
   if (v.active !== undefined) {
-    normalized.active = Boolean(v.active);
+    if (typeof v.active === 'boolean') {
+      normalized.active = v.active;
+    } else if (v.active === 'true' || v.active === 'false') {
+      normalized.active = v.active === 'true';
+    } else {
+      errors.push('active MUST be a boolean or the string "true"/"false"');
+    }
   } else if (!partial) {
     normalized.active = true;
   }
