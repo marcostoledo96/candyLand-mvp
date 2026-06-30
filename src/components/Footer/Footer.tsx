@@ -1,5 +1,8 @@
-// Footer del sitio: links utiles, newsletter y redes sociales
+// Footer del sitio: links utiles y redes sociales.
+// Fake newsletter submit removed per design; social rendered as inert labeled
+// spans (no real external URLs known in this slice).
 import React from "react";
+import { Link } from "react-router-dom";
 import styles from "./Footer.module.css";
 import { FaFacebookF, FaInstagram } from "react-icons/fa";
 import logo from "../../assets/img/logo.png";
@@ -20,37 +23,38 @@ const Footer = () => {
         <div className={styles.footerColumn}>
           <h4>Contenidos</h4>
           <ul>
-            <li><a href="#inicio">Inicio</a></li>
-            <li><a href="#nuestro-mundo">Nuestro mundo</a></li>
-            <li><a href="#menu">Menu</a></li>
+            <li><Link to="/">Inicio</Link></li>
+            <li><Link to="/catalogo">Tienda</Link></li>
+            <li><Link to="/menu">Menú</Link></li>
           </ul>
         </div>
 
         <div className={styles.footerColumn}>
           <h4>Ayuda</h4>
           <ul>
-            <li><a href="#tutoriales">Tutoriales</a></li>
-            <li><a href="#trabaja">Trabaja con nosotros</a></li>
-            <li><a href="#franquicias">Franquicias</a></li>
-            <li><a href="#contacto">Contacto</a></li>
+            <li><Link to="/tutoriales">Tutoriales</Link></li>
+            <li><Link to="/trabaja-con-nosotros">Trabajá con nosotros</Link></li>
+            <li><Link to="/franquicias">Franquicias</Link></li>
+            <li><Link to="/contacto">Contacto</Link></li>
           </ul>
         </div>
 
         <div className={`${styles.footerColumn} ${styles.newsletter}`}>
-          <h4>Suscribite para novedades</h4>
-          <input type="text" placeholder="Tu nombre" />
-          <input type="email" placeholder="Tu email" />
-          <button className={styles.subscribeBtn}>Suscribirme</button>
+          <h4>Conectate con nosotros</h4>
+          <p className={styles.tagline}>
+            Pronto vas a poder suscribirte a nuestro newsletter. Mientras tanto,
+            encontranos en nuestras redes.
+          </p>
 
           <div className={styles.socials}>
-            <span>Conectate con nosotros</span>
             <div className={styles.socialIcons}>
-              <a href="#" aria-label="Candy Land en Facebook">
-                <FaFacebookF />
-              </a>
-              <a href="#" aria-label="Candy Land en Instagram">
-                <FaInstagram />
-              </a>
+              {/* Social links are inert labeled spans until real profile URLs are provided. */}
+              <span aria-disabled="true" className={styles.socialIconInert} title="Próximamente Facebook">
+                <FaFacebookF /> <span className={styles.socialLabel}>Facebook</span>
+              </span>
+              <span aria-disabled="true" className={styles.socialIconInert} title="Próximamente Instagram">
+                <FaInstagram /> <span className={styles.socialLabel}>Instagram</span>
+              </span>
             </div>
           </div>
         </div>

@@ -11,6 +11,11 @@ const CartPage = React.lazy(() => import("./pages/CartPage"));
 const PaymentMethod = React.lazy(() => import("./pages/Checkout/PaymentMethod"));
 const Confirmation = React.lazy(() => import("./pages/Checkout/Confirmation"));
 const AddressForm = React.lazy(() => import("./pages/Checkout/AddressForm"));
+// Public routes (branch frontend/nuevas-rutas-macarena)
+const MenuPage = React.lazy(() => import("./pages/Menu/MenuPage"));
+const TutorialesPage = React.lazy(() => import("./pages/Tutoriales/TutorialesPage"));
+const FranquiciasPage = React.lazy(() => import("./pages/Franquicias/FranquiciasPage"));
+const TrabajaPage = React.lazy(() => import("./pages/Trabaja/TrabajaPage"));
 
 
 const App: React.FC = () => {
@@ -21,8 +26,18 @@ const App: React.FC = () => {
           <Routes>
             <Route path="/" element={<Home />} />
             <Route path="/catalogo" element={<CatalogPage />} />
+            {/* Aliases to CatalogPage per src/AGENTS.md */}
+            <Route path="/tienda" element={<CatalogPage />} />
+            <Route path="/nuestros-dulces" element={<CatalogPage />} />
+            {/* Public pages */}
+            <Route path="/menu" element={<MenuPage />} />
+            <Route path="/tutoriales" element={<TutorialesPage />} />
+            <Route path="/franquicias" element={<FranquiciasPage />} />
+            <Route path="/trabaja-con-nosotros" element={<TrabajaPage />} />
             <Route path="/contacto" element={<Contacto />} />
             <Route path="/carrito" element={<CartPage />} />
+            {/* /checkout alias to AddressForm; keep explicit checkout steps */}
+            <Route path="/checkout" element={<AddressForm />} />
             <Route path="/checkout/direccion" element={<AddressForm />} />
             <Route path="/checkout/pago" element={<PaymentMethod />} />
             <Route path="/checkout/confirmacion" element={<Confirmation />} />

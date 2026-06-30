@@ -83,6 +83,75 @@ Endpoints públicos que la futura UI consumirá. Sin UI, sin email, sin pagos/st
 - [x] 7b.8 Montar rutas públicas en `app.js` antes de admin, con `express.json({ limit: '20kb' })` + parser error handler.
 - [x] 7b.9 Tests: pure helpers + stubbed HTTP (no-auth, 201 persist, 400 no-persist, malformed/oversized, empty catalog, active-only count).
 
+## 7c. Frontend public routes — branch `frontend/nuevas-rutas-macarena`
+
+### Review Workload Forecast
+
+Estimated changed lines: 600-750 (4 pages + 1 CSS module + edits). 800-line budget risk: Medium. Chained PRs recommended: No (single-PR; CSS module compartido mantiene diff compacto). Delivery strategy: single-pr. Chain strategy: size-exception (not needed).
+
+Decision needed before apply: No
+Chained PRs recommended: No
+Chain strategy: size-exception
+400-line budget risk: Low
+800-line budget risk: Medium
+
+### Phase 1: API layer (`src/lib/api.ts`)
+
+- [x] 1.1 Add types `ApiCategory`, `ContactPayload`, `JobApplicationPayload`, `FranchiseLeadPayload`, `PublicFormResponse`.
+- [x] 1.2 Implement `fetchCategories()` via `fetchWithFallback` with consistent error shape.
+- [x] 1.3 Implement `postContact()`, `postJobApplication()`, `postFranchiseLead()` POST helpers; `npm run build` to type-check.
+
+### Phase 2: Routing & navigation
+
+- [x] 2.1 `src/App.tsx`: add lazy imports for `MenuPage`, `TutorialesPage`, `FranquiciasPage`, `TrabajaPage`.
+- [x] 2.2 Register `/menu`, `/tutoriales`, `/franquicias`, `/trabaja-con-nosotros`; aliases `/tienda`, `/nuestros-dulces` → `CatalogPage`.
+- [x] 2.3 Add alias `/checkout` → `AddressForm`; keep `/checkout/direccion|pago|confirmacion`.
+- [x] 2.4 `Header.tsx`: add Menu/Tutoriales/Franquicias/Trabaja links (desktop + mobile).
+- [x] 2.5 `Footer.tsx`: replace `#` anchors with `<Link>`; remove fake newsletter inputs/button.
+- [x] 2.6 Social icons only with real URLs; else inert labeled span with `aria-disabled`.
+
+### Phase 3: Menu page (`/menu`)
+
+- [x] 3.1 Create `src/pages/Menu/MenuPage.tsx` with `useState` for `status`, `categories`, `error`.
+- [x] 3.2 Call `fetchCategories()` and filter `activeProductCount > 0` before render.
+- [x] 3.3 Render loading, error (with retry), empty, and category cards grid. No `/producto/:id` links.
+- [x] 3.4 Use shared `PublicRoutes.module.css` (cards, grid, states, focus-visible).
+
+### Phase 4: Tutorials page (`/tutoriales`)
+
+- [x] 4.1 Create `src/pages/Tutoriales/TutorialesPage.tsx` with static visual cards using `tutorial1..6.jpg` from `src/assets/img/`; real `alt` per card; no network, no CMS, no auth.
+
+### Phase 5: Contact form integration (`/contacto`)
+
+- [x] 5.1 Rewrite `src/components/Contact/Contacto.tsx` to call `postContact()`; map `nombre`→`name`, `mensaje`→`message`.
+- [x] 5.2 Required fields (name, email, message) and optional `phone`; drop `asunto` from payload.
+- [x] 5.3 `aria-live` status (loading/success/error); disable submit while loading; preserve input on error, clear only on success.
+
+### Phase 6: Franchise form (`/franquicias`)
+
+- [x] 6.1 Create `src/pages/Franquicias/FranquiciasPage.tsx` with form `fullName`, `email`, `city`, `phone?`, `message?`.
+- [x] 6.2 Local validation (required + email shape) before submit.
+- [x] 6.3 Call `postFranchiseLead()`; render loading/error/success in `aria-live`; preserve input, reset only on success.
+
+### Phase 7: Jobs form (`/trabaja-con-nosotros`)
+
+- [x] 7.1 Create `src/pages/Trabaja/TrabajaPage.tsx` with form `fullName`, `email`, `position`, `phone?`, `message?`, `cvUrl?`.
+- [x] 7.2 NO `<input type="file">`, no drag-and-drop. `cvUrl` is optional text only.
+- [x] 7.3 Local validation + `postJobApplication()` + loading/error/success; DOM check asserts zero file inputs.
+
+### Phase 8: Static / automated assertions (no test runner)
+
+- [x] 8.1 Add `scripts/assert-public-routes.mjs` to verify: every public route in `App.tsx`; Header has every nav link; Footer has zero `#` anchors; Trabaja has zero file inputs; no `/producto/:id` in Menu.
+- [x] 8.2 Wire as `assert:public-routes` in `package.json`; if Vitest/Jest becomes available, port to that runner.
+
+### Phase 9: Verification
+
+- [x] 9.1 Run `npm run lint` and `npm run build` (mandatory before PR).
+- [ ] 9.2 Local backend: `cd backend && npm run prisma:generate && npm run dev` (dedicated terminal). (Deferred — runtime smoke, not required for this apply slice.)
+- [ ] 9.3 Curl smoke: `GET /api/categories`, `POST /api/contact`, `POST /api/jobs/applications`, `POST /api/franchise/leads`. (Deferred — verify phase.)
+- [ ] 9.4 Manual browser pass + DOM checks: 0 file inputs on `/trabaja-con-nosotros`, 0 `/producto/:id` on `/menu`. (Deferred — verify phase.)
+- [ ] 9.5 Hand off to `sdd-archive` to update `docs/INDEX.md` and `docs/FUNCIONALIDADES.md`. (Deferred — archive phase.)
+
 ## 8. QA/deploy
 
 - [x] 8.1 `npm run lint`.

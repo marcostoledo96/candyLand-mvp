@@ -235,3 +235,85 @@ export async function deleteCartItem(
     throw { error: `No se pudo conectar al backend (${API_URL}). Verificá que el servidor esté corriendo.` };
   }
 }
+
+// --- Public routes API (categories + public forms) ---
+// Contracts match backend/routes/public.js (merged slice 7b).
+
+export interface ApiCategory {
+  id: number;
+  name: string;
+  slug: string;
+  activeProductCount: number;
+}
+
+export interface PublicFormResponse {
+  ok: true;
+  id: number;
+}
+
+export interface ContactPayload {
+  name: string;
+  email: string;
+  message: string;
+  phone?: string;
+}
+
+export interface JobApplicationPayload {
+  fullName: string;
+  email: string;
+  position: string;
+  phone?: string;
+  message?: string;
+  cvUrl?: string;
+}
+
+export interface FranchiseLeadPayload {
+  fullName: string;
+  email: string;
+  city: string;
+  phone?: string;
+  message?: string;
+}
+
+// Shared normalized error shape for public endpoints.
+export interface PublicApiError {
+  error: string;
+  errors?: string[];
+}
+
+export async function fetchCategories(): Promise<ApiCategory[]> {
+  const res = await fetchWithFallback(`${API_URL}/api/categories`);
+  if (!res.ok) {
+    const data: PublicApiError = await res.json().catch(async () => ({ error: await res.text().catch(() => "") }));
+    throw data;
+  }
+  return res.json();
+}
+
+async function postPublicForm(
+  path: string,
+  payload: Record<string, unknown>,
+): Promise<PublicFormResponse> {
+  const res = await fetchWithFallback(`${API_URL}${path}`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(payload),
+  });
+  if (!res.ok) {
+    const data: PublicApiError = await res.json().catch(async () => ({ error: await res.text().catch(() => "") }));
+    throw data;
+  }
+  return res.json();
+}
+
+export function postContact(payload: ContactPayload): Promise<PublicFormResponse> {
+  return postPublicForm('/api/contact', payload as unknown as Record<string, unknown>);
+}
+
+export function postJobApplication(payload: JobApplicationPayload): Promise<PublicFormResponse> {
+  return postPublicForm('/api/jobs/applications', payload as unknown as Record<string, unknown>);
+}
+
+export function postFranchiseLead(payload: FranchiseLeadPayload): Promise<PublicFormResponse> {
+  return postPublicForm('/api/franchise/leads', payload as unknown as Record<string, unknown>);
+}
