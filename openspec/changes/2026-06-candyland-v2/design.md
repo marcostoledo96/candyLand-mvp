@@ -49,8 +49,8 @@ El pedido se confirma antes del email. El email no debe bloquear la respuesta.
 
 MVP recomendado:
 
-- JWT.
-- bcrypt.
+- JWT (HS256 vía Node crypto, sin dependencia externa).
+- password hashing con scrypt (Node crypto), sin bcrypt.
 - usuario admin seed.
 - rutas protegidas.
 

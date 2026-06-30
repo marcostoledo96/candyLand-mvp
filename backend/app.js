@@ -6,6 +6,7 @@ require('dotenv').config();
 const prisma = require('./prismaClient');
 const { randomUUID } = require('crypto');
 const { buildCorsOptions } = require('./utils/runtime');
+const adminRoutes = require('./routes/admin');
 
 const app = express();
 // CORS allowlist from CORS_ORIGIN (comma-separated). Falls back to dev origins
@@ -113,6 +114,7 @@ app.post('/api/carrito', async (req, res) => {
     const cart = await getOrCreateCart(cartId);
     const prod = await prisma.product.findUnique({ where: { id: pid } });
     if (!prod) return res.status(404).json({ error: 'Producto no encontrado' });
+    if (prod.active === false) return res.status(404).json({ error: 'Producto no disponible' });
 
     const existing = await prisma.cartItem.findFirst({ where: { cartId: cart.id, productId: pid } });
     if (existing) {
@@ -307,10 +309,10 @@ app.delete('/api/carrito/:id', async (req, res) => {
   }
 });
 
-// Productos - listar todos
+// Productos - listar todos (solo activos en la ruta pública)
 app.get('/api/productos', async (_req, res) => {
   try {
-    const products = await prisma.product.findMany({ include: { category: true }, orderBy: { id: 'asc' } });
+    const products = await prisma.product.findMany({ where: { active: true }, include: { category: true }, orderBy: { id: 'asc' } });
     const data = products.map((p) => ({
       id: p.id,
       title: p.title,
@@ -333,7 +335,7 @@ app.get('/api/productos/:id', async (req, res) => {
   if (!Number.isInteger(id) || id <= 0) return res.status(400).json({ error: 'Invalid product id' });
   try {
     const p = await prisma.product.findUnique({ where: { id }, include: { category: true } });
-    if (!p) return res.status(404).json({ error: 'Product not found' });
+    if (!p || p.active === false) return res.status(404).json({ error: 'Product not found' });
     return res.json({
       id: p.id,
       title: p.title,
@@ -348,5 +350,8 @@ app.get('/api/productos/:id', async (req, res) => {
     res.status(500).json({ error: 'Internal Server Error' });
   }
 });
+
+// Admin routes (login, me, products CRUD). Categories/orders are deferred.
+app.use('/api', adminRoutes.router);
 
 module.exports = app;
