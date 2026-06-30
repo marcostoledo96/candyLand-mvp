@@ -39,7 +39,7 @@ const Header = () => {
         <ul className={`${styles.navLinks} ${open ? styles.active : ""}`}>
           <li>
             <Link to="/" onClick={closeMenu}>
-              Nuestros dulces
+              Inicio
             </Link>
           </li>
           <li>
@@ -48,16 +48,36 @@ const Header = () => {
             </Link>
           </li>
           <li>
+            <Link to="/menu" onClick={closeMenu}>
+              Menú
+            </Link>
+          </li>
+          <li>
+            <Link to="/tutoriales" onClick={closeMenu}>
+              Tutoriales
+            </Link>
+          </li>
+          <li>
+            <Link to="/franquicias" onClick={closeMenu}>
+              Franquicias
+            </Link>
+          </li>
+          <li>
+            <Link to="/trabaja-con-nosotros" onClick={closeMenu}>
+              Trabajá con nosotros
+              </Link>
+          </li>
+          <li>
+            <Link to="/contacto" onClick={closeMenu}>
+              Contacto
+            </Link>
+          </li>
+          <li>
             <Link to="/carrito" onClick={closeMenu}>
               Carrito
               {totalItems > 0 && (
                 <span className={styles.cartBadge}>{totalItems}</span>
               )}
-            </Link>
-          </li>
-          <li>
-            <Link to="/contacto" onClick={closeMenu}>
-              Contacto
             </Link>
           </li>
         </ul>

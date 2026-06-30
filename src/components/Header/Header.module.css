@@ -112,7 +112,9 @@
 }
 
 /* Responsive */
-@media (max-width: 960px) {
+/* Breakpoint subido a 1100px: con 7 links + carrito y label "Trabajá con nosotros"
+   la nav desbordaba en tablet (~960-1100px). */
+@media (max-width: 1100px) {
   .hamburger {
     display: flex;
   }

@@ -1,0 +1,213 @@
+/* Shared layout for public pages (menu, tutoriales, franquicias, trabaja).
+   Light-mode only. CandyLand palette (#fffafc, #ec6cac, #4a2c2a, #b08968).
+   Mobile-first. Focus-visible for accessibility. */
+
+.page {
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: clamp(32px, 6vw, 64px) 20px;
+  font-family: 'Raleway', sans-serif;
+  color: #4a2c2a;
+}
+
+.pageTitle {
+  font-family: 'Oswald', sans-serif;
+  text-transform: uppercase;
+  font-size: clamp(1.6rem, 4vw, 2.4rem);
+  letter-spacing: 0.02em;
+  margin: 0 0 8px;
+}
+
+.pageLead {
+  margin: 0 0 28px;
+  max-width: 65ch;
+  font-size: 0.98rem;
+  line-height: 1.55;
+  color: #5b3b39;
+}
+
+/* --- State blocks --- */
+.state {
+  padding: 40px 20px;
+  text-align: center;
+  font-family: 'Raleway', sans-serif;
+  color: #4a2c2a;
+}
+
+.stateTitle {
+  font-family: 'Oswald', sans-serif;
+  text-transform: uppercase;
+  margin: 0 0 12px;
+  font-size: 1.15rem;
+}
+
+.stateText {
+  margin: 0 0 18px;
+  font-size: 0.95rem;
+}
+
+.retryBtn {
+  background: #ec6cac;
+  color: #fff;
+  border: none;
+  padding: 10px 22px;
+  border-radius: 6px;
+  cursor: pointer;
+  font-family: 'Oswald', sans-serif;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  transition: background 0.2s ease;
+}
+
+.retryBtn:hover {
+  background: #d85a96;
+}
+
+.retryBtn:focus-visible {
+  outline: 3px solid #4a2c2a;
+  outline-offset: 2px;
+}
+
+/* --- Card grid --- */
+.grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+  gap: 22px;
+}
+
+.card {
+  background: #fffafc;
+  border: 1px solid #f2c7d7;
+  border-radius: 12px;
+  padding: 22px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+.card:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 6px 18px rgba(236, 108, 172, 0.15);
+}
+
+.cardTitle {
+  font-family: 'Oswald', sans-serif;
+  font-size: 1.2rem;
+  margin: 0;
+  color: #4a2c2a;
+}
+
+.cardMeta {
+  font-size: 0.85rem;
+  color: #7a5553;
+  margin: 0;
+}
+
+.cardImage {
+  width: 100%;
+  height: 180px;
+  object-fit: cover;
+  border-radius: 8px;
+  display: block;
+}
+
+/* --- Forms --- */
+.form {
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+  max-width: 560px;
+}
+
+.field {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.field label {
+  font-weight: 600;
+  font-size: 0.92rem;
+  color: #4a2c2a;
+}
+
+.field input,
+.field textarea,
+.field select {
+  width: 100%;
+  padding: 11px 13px;
+  font-size: 0.95rem;
+  font-family: 'Raleway', sans-serif;
+  border: 1px solid #ccc;
+  border-radius: 6px;
+  box-sizing: border-box;
+  background: #fff;
+  color: #4a2c2a;
+}
+
+.field input:focus-visible,
+.field textarea:focus-visible,
+.field select:focus-visible {
+  outline: 3px solid #ec6cac;
+  outline-offset: 1px;
+  border-color: #ec6cac;
+}
+
+.fieldError {
+  color: #b00020;
+  font-size: 0.82rem;
+  margin: 0;
+}
+
+.submitBtn {
+  background: #ec6cac;
+  color: #fff;
+  border: none;
+  padding: 12px 26px;
+  border-radius: 6px;
+  cursor: pointer;
+  font-family: 'Oswald', sans-serif;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  font-size: 0.95rem;
+  transition: background 0.2s ease;
+  align-self: flex-start;
+}
+
+.submitBtn:hover:not(:disabled) {
+  background: #d85a96;
+}
+
+.submitBtn:focus-visible {
+  outline: 3px solid #4a2c2a;
+  outline-offset: 2px;
+}
+
+.submitBtn:disabled {
+  background: #c9a5b3;
+  cursor: not-allowed;
+}
+
+/* --- Status feedback (aria-live) --- */
+.status {
+  font-size: 0.92rem;
+  padding: 10px 14px;
+  border-radius: 6px;
+  margin: 0;
+}
+
+.statusLoading {
+  background: #fff3e0;
+  color: #7a4a00;
+}
+
+.statusError {
+  background: #fdecea;
+  color: #b00020;
+}
+
+.statusSuccess {
+  background: #e8f5e9;
+  color: #1b5e20;
+}
