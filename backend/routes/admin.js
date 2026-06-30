@@ -1,10 +1,19 @@
-// Admin routes: auth (login, me) + protected products CRUD.
+// Admin routes: auth (login, me) + protected products, categories and orders CRUD.
 // JWT (HS256) + scrypt password verification. No external auth dependency.
 // DTO maps imageUrl <-> Product.image and hoverImageUrl <-> Product.hoverImage
 // (DB columns kept as image/hoverImage per PR-3 decision; admin API uses *Url names).
 //
-// Scope note: categories CRUD and orders CRUD are deferred to a follow-up
-// branch to keep this review under budget (admin auth + products CRUD only).
+// Category slug/active: the Prisma Category model has only {id, name @unique,
+// products, createdAt, updatedAt} — no slug/active columns. Per spec guidance we
+// DERIVE slug from name at read time and report a constant active=true rather
+// than churning the schema in this backend-only slice. If real slug/active
+// columns are added later, mapCategoryToAdminDto + the create/update handlers
+// are the single place to update.
+//
+// Order status: the schema stores status as a String defaulting to "PENDING"
+// (canonical English uppercase). The admin API accepts Spanish aliases
+// (pendiente/enviado/entregado/cancelado) and canonical English, normalizing
+// everything to the canonical uppercase form stored in the DB.
 
 const express = require('express');
 const prisma = require('../prismaClient');
@@ -151,6 +160,165 @@ function validateProductInput(input, { partial = false } = {}) {
   return { ok: errors.length === 0, errors, normalized };
 }
 
+// --- Category helpers ---
+
+/**
+ * Derive a URL-safe slug from a category name.
+ * Lowercases, replaces spaces with hyphens, strips accents and punctuation,
+ * collapses repeated hyphens. Returns '' for non-string input.
+ */
+function slugify(name) {
+  if (typeof name !== 'string') return '';
+  return name
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '') // strip diacritics
+    .toLowerCase()
+    .trim()
+    .replace(/[^a-z0-9\s-]/g, '') // drop punctuation except hyphen/space
+    .replace(/[\s-]+/g, '-') // spaces and repeated hyphens -> single hyphen
+    .replace(/^-+|-+$/g, ''); // trim leading/trailing hyphens
+}
+
+/**
+ * Map a Prisma Category row to the admin DTO.
+ * slug is derived from name (schema has no slug column).
+ * active is constant true (schema has no active column) — see file header.
+ */
+function mapCategoryToAdminDto(c) {
+  return {
+    id: c.id,
+    name: c.name,
+    slug: slugify(c.name),
+    active: true,
+    createdAt: c.createdAt,
+    updatedAt: c.updatedAt,
+  };
+}
+
+/**
+ * Validate category input at the trust boundary.
+ * @returns {{ok:boolean, errors:string[], normalized:object}}
+ */
+function validateCategoryInput(input, { partial = false } = {}) {
+  const errors = [];
+  const normalized = {};
+  const v = input || {};
+
+  if (v.name !== undefined) {
+    if (typeof v.name !== 'string') errors.push('name MUST be a string');
+    else {
+      const n = v.name.trim();
+      if (n.length === 0) errors.push('name MUST be non-empty');
+      else if (n.length > 100) errors.push('name MUST be at most 100 chars');
+      else normalized.name = n;
+    }
+  } else if (!partial) {
+    errors.push('name is required');
+  }
+
+  return { ok: errors.length === 0, errors, normalized };
+}
+
+// --- Order helpers ---
+
+// Canonical uppercase statuses stored in Order.status (schema default "PENDING").
+const ORDER_STATUSES = ['PENDING', 'SHIPPED', 'DELIVERED', 'CANCELLED'];
+
+// Spanish + lowercase aliases -> canonical. Used by admin PATCH/list filter.
+const ORDER_STATUS_ALIASES = {
+  pendiente: 'PENDING',
+  enviado: 'SHIPPED',
+  entregado: 'DELIVERED',
+  cancelado: 'CANCELLED',
+  pending: 'PENDING',
+  shipped: 'SHIPPED',
+  delivered: 'DELIVERED',
+  cancelled: 'CANCELLED',
+};
+
+/**
+ * Normalize an order status string to its canonical uppercase form.
+ * Accepts Spanish aliases and canonical English. Returns null if unknown
+ * or non-string.
+ */
+function normalizeOrderStatus(value) {
+  if (typeof value !== 'string') return null;
+  const key = value.trim().toLowerCase();
+  if (!key) return null;
+  if (Object.prototype.hasOwnProperty.call(ORDER_STATUS_ALIASES, key)) {
+    return ORDER_STATUS_ALIASES[key];
+  }
+  const upper = key.toUpperCase();
+  if (ORDER_STATUSES.includes(upper)) return upper;
+  return null;
+}
+
+function isValidOrderStatus(value) {
+  return normalizeOrderStatus(value) !== null;
+}
+
+/**
+ * Validate order status PATCH input.
+ * @returns {{ok:boolean, errors:string[], normalized:{status:string}}}
+ */
+function validateOrderStatusInput(input) {
+  const errors = [];
+  const normalized = {};
+  const v = input || {};
+
+  if (v.status === undefined || v.status === null || v.status === '') {
+    errors.push('status is required');
+  } else {
+    const canonical = normalizeOrderStatus(v.status);
+    if (!canonical) {
+      errors.push('status MUST be one of: pendiente, enviado, entregado, cancelado');
+    } else {
+      normalized.status = canonical;
+    }
+  }
+
+  return { ok: errors.length === 0, errors, normalized };
+}
+
+/**
+ * Map a Prisma Order (with relations) to the admin DTO.
+ * Exposes enough for a future admin UI: id, orderNumber, status, totals,
+ * payment method/status, contact fields, and items with product reference +
+ * subtotal. Tolerates missing payment/customer/items (e.g. partial includes).
+ */
+function mapOrderToAdminDto(order) {
+  const customer = order.customer || null;
+  const payment = order.payment || null;
+  const items = Array.isArray(order.items) ? order.items.map((it) => ({
+    productId: it.productId,
+    productTitle: it.product ? it.product.title : null,
+    quantity: it.quantity,
+    priceCents: it.priceCents,
+    subtotalCents: it.quantity * it.priceCents,
+  })) : [];
+
+  return {
+    id: order.id,
+    orderNumber: order.orderNumber,
+    status: order.status,
+    totalCents: order.totalCents,
+    paymentMethod: payment ? payment.method : null,
+    paymentStatus: payment ? payment.status : null,
+    contact: customer ? {
+      id: customer.id,
+      name: customer.name,
+      phone: customer.phone,
+      address: customer.address,
+      city: customer.city,
+      province: customer.province,
+      postalCode: customer.postalCode,
+    } : null,
+    items,
+    createdAt: order.createdAt,
+    updatedAt: order.updatedAt,
+  };
+}
+
 // --- Auth routes (public) ---
 
 // POST /api/admin/login
@@ -261,7 +429,175 @@ router.delete('/admin/products/:id', adminGuard, async (req, res) => {
   }
 });
 
-// --- Admin categories CRUD: DEFERRED to follow-up branch ---
-// --- Admin orders CRUD: DEFERRED to follow-up branch ---
+// --- Admin categories CRUD (protected) ---
 
-module.exports = { router, mapProductToAdminDto, mapAdminDtoToProductData, validateProductInput };
+// GET /api/admin/categories
+router.get('/admin/categories', adminGuard, async (_req, res) => {
+  try {
+    const categories = await prisma.category.findMany({
+      orderBy: { id: 'asc' },
+    });
+    res.json(categories.map(mapCategoryToAdminDto));
+  } catch (err) {
+    console.error('admin list categories error:', err);
+    res.status(500).json({ error: 'Internal Server Error' });
+  }
+});
+
+// POST /api/admin/categories
+router.post('/admin/categories', adminGuard, async (req, res) => {
+  try {
+    const { ok, errors, normalized } = validateCategoryInput(req.body);
+    if (!ok) return res.status(400).json({ error: 'Validation failed', errors });
+    try {
+      const created = await prisma.category.create({ data: { name: normalized.name } });
+      res.status(201).json(mapCategoryToAdminDto(created));
+    } catch (createErr) {
+      // P2002 = unique constraint violation (duplicate name).
+      if (createErr && createErr.code === 'P2002') {
+        return res.status(409).json({ error: 'A category with that name already exists' });
+      }
+      throw createErr;
+    }
+  } catch (err) {
+    console.error('admin create category error:', err);
+    res.status(500).json({ error: 'Internal Server Error' });
+  }
+});
+
+// PATCH /api/admin/categories/:id
+router.patch('/admin/categories/:id', adminGuard, async (req, res) => {
+  try {
+    const id = Number(req.params.id);
+    if (!Number.isInteger(id) || id <= 0) return res.status(400).json({ error: 'Invalid category id' });
+    const { ok, errors, normalized } = validateCategoryInput(req.body, { partial: true });
+    if (!ok) return res.status(400).json({ error: 'Validation failed', errors });
+    const existing = await prisma.category.findUnique({ where: { id } });
+    if (!existing) return res.status(404).json({ error: 'Category not found' });
+    try {
+      const updated = await prisma.category.update({ where: { id }, data: { name: normalized.name } });
+      res.json(mapCategoryToAdminDto(updated));
+    } catch (updateErr) {
+      if (updateErr && updateErr.code === 'P2002') {
+        return res.status(409).json({ error: 'A category with that name already exists' });
+      }
+      throw updateErr;
+    }
+  } catch (err) {
+    console.error('admin update category error:', err);
+    res.status(500).json({ error: 'Internal Server Error' });
+  }
+});
+
+// DELETE /api/admin/categories/:id — blocked while products reference it
+router.delete('/admin/categories/:id', adminGuard, async (req, res) => {
+  try {
+    const id = Number(req.params.id);
+    if (!Number.isInteger(id) || id <= 0) return res.status(400).json({ error: 'Invalid category id' });
+    const existing = await prisma.category.findUnique({ where: { id } });
+    if (!existing) return res.status(404).json({ error: 'Category not found' });
+    // Block deletion when products reference the category.
+    const productCount = await prisma.product.count({ where: { categoryId: id } });
+    if (productCount > 0) {
+      return res.status(409).json({ error: 'Cannot delete a category that has products', productCount });
+    }
+    await prisma.category.delete({ where: { id } });
+    res.status(204).end();
+  } catch (err) {
+    console.error('admin delete category error:', err);
+    res.status(500).json({ error: 'Internal Server Error' });
+  }
+});
+
+// --- Admin orders (protected) ---
+
+// GET /api/admin/orders?status=
+router.get('/admin/orders', adminGuard, async (req, res) => {
+  try {
+    const where = {};
+    const rawStatus = req.query.status;
+    if (typeof rawStatus === 'string' && rawStatus.trim() !== '') {
+      const canonical = normalizeOrderStatus(rawStatus);
+      if (!canonical) {
+        return res.status(400).json({ error: 'Invalid status filter', allowed: ORDER_STATUSES });
+      }
+      where.status = canonical;
+    }
+    const orders = await prisma.order.findMany({
+      where,
+      include: {
+        items: { include: { product: { select: { id: true, title: true } } } },
+        payment: true,
+        customer: true,
+      },
+      orderBy: { id: 'asc' },
+    });
+    res.json(orders.map(mapOrderToAdminDto));
+  } catch (err) {
+    console.error('admin list orders error:', err);
+    res.status(500).json({ error: 'Internal Server Error' });
+  }
+});
+
+// GET /api/admin/orders/:id
+router.get('/admin/orders/:id', adminGuard, async (req, res) => {
+  try {
+    const id = Number(req.params.id);
+    if (!Number.isInteger(id) || id <= 0) return res.status(400).json({ error: 'Invalid order id' });
+    const order = await prisma.order.findUnique({
+      where: { id },
+      include: {
+        items: { include: { product: { select: { id: true, title: true } } } },
+        payment: true,
+        customer: true,
+      },
+    });
+    if (!order) return res.status(404).json({ error: 'Order not found' });
+    res.json(mapOrderToAdminDto(order));
+  } catch (err) {
+    console.error('admin get order error:', err);
+    res.status(500).json({ error: 'Internal Server Error' });
+  }
+});
+
+// PATCH /api/admin/orders/:id — status update with allowlist
+router.patch('/admin/orders/:id', adminGuard, async (req, res) => {
+  try {
+    const id = Number(req.params.id);
+    if (!Number.isInteger(id) || id <= 0) return res.status(400).json({ error: 'Invalid order id' });
+    const { ok, errors, normalized } = validateOrderStatusInput(req.body);
+    if (!ok) return res.status(400).json({ error: 'Validation failed', errors });
+    const existing = await prisma.order.findUnique({ where: { id } });
+    if (!existing) return res.status(404).json({ error: 'Order not found' });
+    const updated = await prisma.order.update({
+      where: { id },
+      data: { status: normalized.status },
+      include: {
+        items: { include: { product: { select: { id: true, title: true } } } },
+        payment: true,
+        customer: true,
+      },
+    });
+    res.json(mapOrderToAdminDto(updated));
+  } catch (err) {
+    console.error('admin update order error:', err);
+    res.status(500).json({ error: 'Internal Server Error' });
+  }
+});
+
+module.exports = {
+  router,
+  mapProductToAdminDto,
+  mapAdminDtoToProductData,
+  validateProductInput,
+  // Categories
+  slugify,
+  mapCategoryToAdminDto,
+  validateCategoryInput,
+  // Orders
+  ORDER_STATUSES,
+  normalizeOrderStatus,
+  isValidOrderStatus,
+  mapOrderToAdminDto,
+  validateOrderStatusInput,
+};
