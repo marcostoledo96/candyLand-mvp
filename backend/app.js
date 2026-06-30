@@ -7,13 +7,24 @@ const prisma = require('./prismaClient');
 const { randomUUID } = require('crypto');
 const { buildCorsOptions } = require('./utils/runtime');
 const adminRoutes = require('./routes/admin');
+const publicRoutes = require('./routes/public');
 
 const app = express();
 // CORS allowlist from CORS_ORIGIN (comma-separated). Falls back to dev origins
 // (localhost + production Vercel domain) so local curl and the deployed frontend work.
 // No-origin requests (curl, health probes) are allowed regardless of origin.
 app.use(cors(buildCorsOptions(process.env)));
-app.use(express.json());
+// 20kb limit rejects oversized public form submissions at the parser boundary
+// before any handler/persistence runs.
+app.use(express.json({ limit: '20kb' }));
+// Malformed JSON / oversized body -> 400 with a plain message, no stack trace.
+// Runs before all routes so every public/admin endpoint returns a safe 400.
+app.use((err, _req, res, next) => {
+  if (err && (err.type === 'entity.parse.failed' || err.type === 'entity.too.large' || err.status === 400 || err.status === 413)) {
+    return res.status(400).json({ error: 'Invalid request body' });
+  }
+  return next(err);
+});
 
 // Ruta base y health para chequeos rápidos
 app.get('/api', (_req, res) => {
@@ -360,6 +371,10 @@ app.get('/api/productos/:id', async (req, res) => {
     res.status(500).json({ error: 'Internal Server Error' });
   }
 });
+
+// Public routes (categories listing + contact/job/franchise form submissions).
+// Mounted before admin routes so no admin token is required on these paths.
+app.use('/api', publicRoutes.router);
 
 // Admin routes (login, me, products, categories, and orders CRUD).
 app.use('/api', adminRoutes.router);

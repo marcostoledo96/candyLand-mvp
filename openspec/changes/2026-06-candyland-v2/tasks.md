@@ -69,6 +69,20 @@
 - [ ] 7.8 Mejorar Header/Footer.
 - [ ] 7.9 Crear NotFound.
 
+## 7b. Backend de formularios públicos y categorías (branch backend/formularios-publicos-y-categorias)
+
+Endpoints públicos que la futura UI consumirá. Sin UI, sin email, sin pagos/stock.
+
+- [x] 7b.1 Extraer `slugify` a `backend/utils/slug.js` y reusarla en admin + public.
+- [x] 7b.2 Crear `backend/routes/public.js` con helpers de validación y DTO.
+- [x] 7b.3 `GET /api/categories` público (id, name, slug, activeProductCount active-only, sin payload de productos).
+- [x] 7b.4 `POST /api/contact` (valida name/email/message, phone opcional, 201 `{ ok, id }`, sin email).
+- [x] 7b.5 `POST /api/jobs/applications` (valida fullName/email/position, phone/message/cvUrl opcionales).
+- [x] 7b.6 `POST /api/franchise/leads` (valida fullName/email/city, phone/message opcionales).
+- [x] 7b.7 Safe errors: malformed JSON 400 sin stack, oversized body 400 sin persistir, error shape consistente.
+- [x] 7b.8 Montar rutas públicas en `app.js` antes de admin, con `express.json({ limit: '20kb' })` + parser error handler.
+- [x] 7b.9 Tests: pure helpers + stubbed HTTP (no-auth, 201 persist, 400 no-persist, malformed/oversized, empty catalog, active-only count).
+
 ## 8. QA/deploy
 
 - [x] 8.1 `npm run lint`.
