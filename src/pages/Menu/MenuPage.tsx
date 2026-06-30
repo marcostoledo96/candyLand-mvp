@@ -82,7 +82,7 @@ const MenuPage: React.FC = () => {
               {c.activeProductCount}{' '}
               {c.activeProductCount === 1 ? 'producto disponible' : 'productos disponibles'}
             </p>
-            <Link to={`/catalogo?categoria=${encodeURIComponent(c.slug)}`} className={shared.retryBtn}>
+            <Link to={`/catalogo?categoria=${encodeURIComponent(c.name)}`} className={shared.retryBtn}>
               Ver productos
             </Link>
           </li>

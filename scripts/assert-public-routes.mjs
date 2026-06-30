@@ -61,6 +61,24 @@ if (existsSync(appPath)) {
   }
 }
 
+// --- CatalogPage <-> MenuPage filter contract ---
+// MenuPage category cards link to /catalogo?categoria=<X>; CatalogPage must
+// initialize/sync selectedCategory from the `categoria` search param, and the
+// link value must match what CatalogPage filters by (product.category = name).
+const catalogPath = src('pages/Catalog/CatalogPage.tsx');
+const menuPath = src('pages/Menu/MenuPage.tsx');
+check('CatalogPage.tsx exists', existsSync(catalogPath));
+if (existsSync(catalogPath)) {
+  const catalog = read(catalogPath);
+  check('CatalogPage reads `categoria` search param', /searchParams\.get\(['"]categoria['"]\)/.test(catalog), 'must sync selectedCategory from ?categoria=');
+  check('CatalogPage uses useSearchParams', /useSearchParams/.test(catalog));
+  check('CatalogPage clones URLSearchParams before mutation', /new URLSearchParams\(searchParams\)/.test(catalog));
+  const menu = existsSync(menuPath) ? read(menuPath) : '';
+  check('MenuPage links to /catalogo?categoria=', /\/catalogo\?categoria=/.test(menu));
+  // Both must agree on the value passed/matched (category name, not slug).
+  check('MenuPage passes category name (not slug) to match CatalogPage filter', /categoria=\$\{encodeURIComponent\(c\.name\)}/.test(menu));
+}
+
 // --- src/lib/api.ts: public helpers ---
 const apiPath = src('lib/api.ts');
 check('src/lib/api.ts exists', existsSync(apiPath));
@@ -100,6 +118,13 @@ if (existsSync(headerPath)) {
     check(`Header links to ${path}`, header.includes(`to="${path}"`), `missing to="${path}"`);
   }
   check('Header has no "#" anchors', !/\shref="#"/.test(header) && !/to="#"/.test(header));
+  // Responsive: hamburger breakpoint raised to 1100px to prevent overflow
+  // around tablet widths.
+  const headerCssPath = src('components/Header/Header.module.css');
+  if (existsSync(headerCssPath)) {
+    const headerCss = read(headerCssPath);
+    check('Header CSS hamburger breakpoint >= 1100px', /max-width:\s*1100px/.test(headerCss));
+  }
 }
 
 // --- Footer.tsx: no fake newsletter, no # anchors ---
@@ -119,7 +144,6 @@ if (existsSync(footerPath)) {
 }
 
 // --- MenuPage: no /producto/:id, has states ---
-const menuPath = src('pages/Menu/MenuPage.tsx');
 check('MenuPage.tsx exists', existsSync(menuPath));
 if (existsSync(menuPath)) {
   const menu = read(menuPath);
@@ -154,6 +178,8 @@ if (existsSync(contactPath)) {
   check('Contacto disables submit while loading', /disabled/.test(contact));
   // No alert() success — real status UI
   check('Contacto does not use alert() for success', !/alert\(/.test(contact));
+  // Stale success feedback must be cleared before validation returns early.
+  check('Contacto clears feedback before validation', /setFeedback\(['"]['"]\)[\s\S]*?if\s*\(!validate\(\)\)\s*return/.test(contact));
 }
 
 // --- FranquiciasPage ---
@@ -166,6 +192,7 @@ if (existsSync(franPath)) {
   check('FranquiciasPage has city field (required)', /city/.test(fran));
   check('FranquiciasPage has aria-live status', /aria-live/.test(fran));
   check('FranquiciasPage disables submit while loading', /disabled/.test(fran));
+  check('FranquiciasPage clears feedback before validation', /setFeedback\(['']['']\)[\s\S]*?if\s*\(!validate\(\)\)\s*return/.test(fran));
 }
 
 // --- TrabajaPage: no file input ---
@@ -180,6 +207,7 @@ if (existsSync(trabajaPath)) {
   check('TrabajaPage has NO file input', !/type="file"/.test(trabaja) && !/type='file'/.test(trabaja));
   check('TrabajaPage has aria-live status', /aria-live/.test(trabaja));
   check('TrabajaPage disables submit while loading', /disabled/.test(trabaja));
+  check('TrabajaPage clears feedback before validation', /setFeedback\(['']['']\)[\s\S]*?if\s*\(!validate\(\)\)\s*return/.test(trabaja));
 }
 
 console.log(`\nassert-public-routes: ${failures === 0 ? 'PASS' : `${failures} FAIL`}`);

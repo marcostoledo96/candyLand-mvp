@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from "react";
+import { useSearchParams } from "react-router-dom";
 import { Product } from "../../components/Catalog/CatalogCard/CatalogCard";
 import CatalogCard from "../../components/Catalog/CatalogCard/CatalogCard";
 import styles from "./CatalogPage.module.css";
@@ -7,14 +8,37 @@ import { fetchProducts, ApiProduct } from "../../lib/api";
 
 const CatalogPage = () => {
   const { addToCart } = useCart();
+  const [searchParams, setSearchParams] = useSearchParams();
   const [products, setProducts] = useState<Product[]>([]);
   const [searchTerm, setSearchTerm] = useState("");
-  const [selectedCategory, setSelectedCategory] = useState("Todos");
+  const [selectedCategory, setSelectedCategory] = useState(
+    searchParams.get("categoria") || "Todos",
+  );
   const [minPrice, setMinPrice] = useState(0);
   const [maxPrice, setMaxPrice] = useState(5000);
   const [visibleProducts, setVisibleProducts] = useState(20); // mostrar más inicialmente
   const [loading, setLoading] = useState(true);
   const [loadingMore, setLoadingMore] = useState(false); // loader scroll
+
+  // Sincroniza el filtro de categoría con el query param `categoria`.
+  // El menú (MenuPage) enlaza a /catalogo?categoria=<Nombre de categoría>.
+  useEffect(() => {
+    const cat = searchParams.get("categoria");
+    setSelectedCategory(cat || "Todos");
+  }, [searchParams]);
+
+  const onCategoryChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
+    const value = e.target.value;
+    setSelectedCategory(value);
+    // Mantener la URL en sincronía con el filtro activo.
+    const nextParams = new URLSearchParams(searchParams);
+    if (value === "Todos") {
+      nextParams.delete("categoria");
+    } else {
+      nextParams.set("categoria", value);
+    }
+    setSearchParams(nextParams, { replace: true });
+  };
 
   const loadMore = () => {
     if (loadingMore || visibleProducts >= filteredProducts.length) return;
@@ -124,18 +148,33 @@ const CatalogPage = () => {
     return () => { mounted = false; };
   }, []);
 
+  // Obtener categorías únicas
+  const categories = ["Todos", ...new Set(products.map((p) => p.category))];
+  const effectiveSelectedCategory = categories.includes(selectedCategory)
+    ? selectedCategory
+    : "Todos";
+
   // Filtrado desde frontend
   const filteredProducts = products.filter((product) => {
     return (
       product.title.toLowerCase().includes(searchTerm.toLowerCase()) &&
-      (selectedCategory === "Todos" || product.category === selectedCategory) &&
+      (effectiveSelectedCategory === "Todos" || product.category === effectiveSelectedCategory) &&
       product.price >= minPrice &&
       product.price <= maxPrice
     );
   });
 
-  // Obtener categorías únicas
-  const categories = ["Todos", ...new Set(products.map((p) => p.category))];
+  // Si alguien abre /catalogo?categoria=... con una categoría inexistente,
+  // volver a "Todos" para no dejar el select en un valor imposible.
+  useEffect(() => {
+    if (loading || products.length === 0 || selectedCategory === "Todos") return;
+    if (!categories.includes(selectedCategory)) {
+      const nextParams = new URLSearchParams(searchParams);
+      nextParams.delete("categoria");
+      setSelectedCategory("Todos");
+      setSearchParams(nextParams, { replace: true });
+    }
+  }, [categories, loading, products.length, searchParams, selectedCategory, setSearchParams]);
 
   return (
     <div className={styles.catalogContainer}>
@@ -151,7 +190,7 @@ const CatalogPage = () => {
         />
 
         {/* Categorías */}
-        <select onChange={(e) => setSelectedCategory(e.target.value)} value={selectedCategory}>
+        <select onChange={onCategoryChange} value={effectiveSelectedCategory}>
           {categories.map((cat) => (
             <option key={cat} value={cat}>{cat}</option>
           ))}

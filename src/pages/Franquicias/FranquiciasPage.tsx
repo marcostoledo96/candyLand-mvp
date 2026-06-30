@@ -48,9 +48,12 @@ const FranquiciasPage: React.FC = () => {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    // Limpiar feedback/estado previo antes de validar para que un éxito
+    // persistente no quede mostrándose tras un submit inválido.
+    setStatus('idle');
+    setFeedback('');
     if (!validate()) return;
     setStatus('loading');
-    setFeedback('');
     try {
       await postFranchiseLead({
         fullName: values.fullName.trim(),
