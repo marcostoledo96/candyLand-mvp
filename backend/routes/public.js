@@ -182,7 +182,9 @@ router.get('/categories', async (_req, res) => {
   try {
     const categories = await prisma.category.findMany({
       orderBy: { id: 'asc' },
-      _count: { select: { products: { where: { active: true } } } },
+      include: {
+        _count: { select: { products: { where: { active: true } } } },
+      },
     });
     res.json(categories.map((c) => mapCategoryToPublicDto(c)));
   } catch (err) {

@@ -25,14 +25,18 @@ const franchiseLeads = [];
 
 // Per-category active product counts (simulates Prisma filtered relation count).
 const activeCountsByCategory = new Map();
+const categoryFindManyArgs = [];
 
 const fakePrisma = {
   category: {
     // Simulate Prisma filtered relation count: _count.products = active product count.
-    findMany: async () => Array.from(categories.values()).map((c) => ({
-      ...c,
-      _count: { products: activeCountsByCategory.get(c.id) || 0 },
-    })).sort((a, b) => a.id - b.id),
+    findMany: async (args) => {
+      categoryFindManyArgs.push(args);
+      return Array.from(categories.values()).map((c) => ({
+        ...c,
+        _count: { products: activeCountsByCategory.get(c.id) || 0 },
+      })).sort((a, b) => a.id - b.id);
+    },
   },
   contactMessage: {
     create: async ({ data }) => {
@@ -147,6 +151,16 @@ async function run() {
     // active-only count: 3 active for category 1, 0 for category 2
     assert.equal(r.body[0].activeProductCount, 3);
     assert.equal(r.body[1].activeProductCount, 0);
+  });
+
+  await test('uses Prisma include._count for active-only product counts', async () => {
+    const lastArgs = categoryFindManyArgs[categoryFindManyArgs.length - 1];
+    assert.deepEqual(lastArgs, {
+      orderBy: { id: 'asc' },
+      include: {
+        _count: { select: { products: { where: { active: true } } } },
+      },
+    });
   });
 
   await test('MUST NOT expose products payload in category DTO', async () => {
