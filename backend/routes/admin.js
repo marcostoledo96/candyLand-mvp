@@ -20,6 +20,7 @@ const prisma = require('../prismaClient');
 const { verifyPassword } = require('../utils/password');
 const { signAdminToken } = require('../utils/jwt');
 const { requireAdmin } = require('../middleware/admin');
+const { slugify } = require('../utils/slug');
 
 const router = express.Router();
 
@@ -161,23 +162,6 @@ function validateProductInput(input, { partial = false } = {}) {
 }
 
 // --- Category helpers ---
-
-/**
- * Derive a URL-safe slug from a category name.
- * Lowercases, replaces spaces with hyphens, strips accents and punctuation,
- * collapses repeated hyphens. Returns '' for non-string input.
- */
-function slugify(name) {
-  if (typeof name !== 'string') return '';
-  return name
-    .normalize('NFD')
-    .replace(/[\u0300-\u036f]/g, '') // strip diacritics
-    .toLowerCase()
-    .trim()
-    .replace(/[^a-z0-9\s-]/g, '') // drop punctuation except hyphen/space
-    .replace(/[\s-]+/g, '-') // spaces and repeated hyphens -> single hyphen
-    .replace(/^-+|-+$/g, ''); // trim leading/trailing hyphens
-}
 
 /**
  * Map a Prisma Category row to the admin DTO.
