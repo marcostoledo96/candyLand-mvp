@@ -8,6 +8,7 @@ const { randomUUID } = require('crypto');
 const { buildCorsOptions } = require('./utils/runtime');
 const adminRoutes = require('./routes/admin');
 const publicRoutes = require('./routes/public');
+const { sendOrderConfirmationEmail } = require('./services/email');
 
 const app = express();
 // CORS allowlist from CORS_ORIGIN (comma-separated). Falls back to dev origins
@@ -169,70 +170,154 @@ app.post('/api/payment-method', async (req, res) => {
   }
 });
 
-// Confirmar orden
+// Payment method allowlist for order confirmation (trust boundary).
+// Stored cart.paymentMethod is a plain string; confirmation must re-validate.
+// Accepts normalized codes (CASH/TRANSFER) and pre-normalization aliases
+// (efectivo/transferencia). Everything else -> 400, no writes, no email.
+const PAYMENT_ALLOWLIST = new Map([
+  ['CASH', 'CASH'],
+  ['EFECTIVO', 'CASH'],
+  ['TRANSFER', 'TRANSFER'],
+  ['TRANSFERENCIA', 'TRANSFER'],
+]);
+
+class OrderConfirmDomainError extends Error {
+  constructor(status, body) {
+    super(body.error || 'Order confirmation failed');
+    this.status = status;
+    this.body = body;
+  }
+}
+
+function orderConfirmError(status, body) {
+  return new OrderConfirmDomainError(status, body);
+}
+
+// Confirmar orden — single consistency boundary.
+// Runs cart load, stock validation/decrement, order+payment+items creation,
+// and cart cleanup inside one prisma.$transaction. Email is post-commit and
+// non-blocking (never throws to the route, never runs on failed confirmation).
 app.post('/api/orders/confirm', async (req, res) => {
   try {
     const cartId = typeof req.query.cartId === 'string' ? req.query.cartId : undefined;
     if (!cartId) return res.status(400).json({ error: 'cartId requerido' });
 
-    const cart = await prisma.cart.findUnique({
-      where: { id: cartId },
-      include: { items: { include: { product: true } }, customer: true },
-    });
-
-    if (!cart) return res.status(404).json({ error: 'Carrito no encontrado' });
-    if (!cart.customerId || !cart.customer) return res.status(400).json({ error: 'Faltan datos de checkout del cliente' });
-    if (!cart.items.length) return res.status(400).json({ error: 'El carrito está vacío' });
-    if (!cart.paymentMethod) return res.status(400).json({ error: 'Falta seleccionar método de pago' });
-
-    // Reject confirmation if any cart product was admin soft-deleted (active=false).
-    // This prevents orders referencing products that became unavailable after add-to-cart.
-    const inactiveItems = cart.items.filter((it) => it.product.active === false);
-    if (inactiveItems.length) {
-      return res.status(400).json({
-        error: 'El carrito contiene productos no disponibles',
-        inactiveProducts: inactiveItems.map((it) => ({ productId: it.productId, title: it.product.title })),
+    const order = await prisma.$transaction(async (tx) => {
+      const cart = await tx.cart.findUnique({
+        where: { id: cartId },
+        include: { items: { include: { product: true } }, customer: true },
       });
-    }
 
-    const totalCents = cart.items.reduce((acc, it) => acc + it.quantity * it.product.priceCents, 0);
-    const prefix = 'CL-';
-    const rnd = Math.floor(100000 + Math.random() * 900000);
-    const orderNumber = `${prefix}${rnd}`;
+      if (!cart) throw orderConfirmError(404, { error: 'Carrito no encontrado' });
+      if (!cart.customerId || !cart.customer) throw orderConfirmError(400, { error: 'Faltan datos de checkout del cliente' });
+      if (!cart.items.length) throw orderConfirmError(400, { error: 'El carrito está vacío' });
+      if (!cart.paymentMethod) throw orderConfirmError(400, { error: 'Falta seleccionar método de pago' });
 
-    const order = await prisma.order.create({
-      data: {
-        orderNumber,
-        customerId: cart.customerId,
-        totalCents,
-        status: 'PENDING',
-        payment: { create: { method: cart.paymentMethod, status: 'PENDING' } },
-        items: { create: cart.items.map((ci) => ({ productId: ci.productId, quantity: ci.quantity, priceCents: ci.product.priceCents })) },
-      },
-      include: { items: true, payment: true, customer: true },
+      // Payment allowlist (re-validate stored method at confirmation).
+      const normalizedPayment = PAYMENT_ALLOWLIST.get(String(cart.paymentMethod).toUpperCase());
+      if (!normalizedPayment) {
+        throw orderConfirmError(400, { error: 'Método de pago inválido' });
+      }
+
+      // Reject non-positive / non-integer quantities before any stock write.
+      const badQty = cart.items.find((it) => !Number.isInteger(it.quantity) || it.quantity <= 0);
+      if (badQty) {
+        throw orderConfirmError(400, { error: `Cantidad inválida para producto ${badQty.productId}` });
+      }
+
+      // Reject inactive products (admin soft-deleted after add-to-cart).
+      const inactiveItems = cart.items.filter((it) => it.product.active === false);
+      if (inactiveItems.length) {
+        throw orderConfirmError(400, {
+          error: 'El carrito contiene productos no disponibles',
+          inactiveProducts: inactiveItems.map((it) => ({ productId: it.productId, title: it.product.title })),
+        });
+      }
+
+      // Deterministic stock decrement: sort items by productId ascending.
+      const sortedItems = [...cart.items].sort((a, b) => a.productId - b.productId);
+
+      // Conditional decrement per item: only decrements if active && stock >= qty.
+      // If count === 0, re-read product inside the tx to discriminate inactive vs
+      // insufficient/concurrent and return the spec'd 400 payload.
+      const insufficientStock = [];
+      for (const it of sortedItems) {
+        const result = await tx.product.updateMany({
+          where: { id: it.productId, active: true, stock: { gte: it.quantity } },
+          data: { stock: { decrement: it.quantity } },
+        });
+        if (result.count === 0) {
+          const fresh = await tx.product.findUnique({ where: { id: it.productId } });
+          if (fresh && fresh.active === false) {
+            // Became inactive between precheck and decrement (race).
+            insufficientStock.push({ productId: it.productId, title: fresh.title, requested: it.quantity, available: 0 });
+          } else {
+            insufficientStock.push({
+              productId: it.productId,
+              title: fresh ? fresh.title : it.product.title,
+              requested: it.quantity,
+              available: fresh ? fresh.stock : 0,
+            });
+          }
+        }
+      }
+      if (insufficientStock.length) {
+        throw orderConfirmError(400, { error: 'Stock insuficiente', insufficientStock });
+      }
+
+      const totalCents = cart.items.reduce((acc, it) => acc + it.quantity * it.product.priceCents, 0);
+      const prefix = 'CL-';
+      const rnd = Math.floor(100000 + Math.random() * 900000);
+      const orderNumber = `${prefix}${rnd}`;
+
+      const created = await tx.order.create({
+        data: {
+          orderNumber,
+          customerId: cart.customerId,
+          totalCents,
+          status: 'PENDING',
+          payment: { create: { method: normalizedPayment, status: 'PENDING' } },
+          items: { create: cart.items.map((ci) => ({ productId: ci.productId, quantity: ci.quantity, priceCents: ci.product.priceCents })) },
+        },
+        include: { items: true, payment: true, customer: true },
+      });
+
+      await tx.cartItem.deleteMany({ where: { cartId: cart.id } });
+
+      return { created, paymentMethod: normalizedPayment };
     });
 
-    await prisma.cartItem.deleteMany({ where: { cartId: cart.id } });
+    const { created, paymentMethod } = order;
 
     const response = {
-      orderId: order.id,
-      orderNumber: order.orderNumber,
-      totalCents: order.totalCents,
-      paymentMethod: cart.paymentMethod === 'CASH' ? 'efectivo' : 'transferencia',
-      items: order.items.map((it) => ({ productId: it.productId, quantity: it.quantity, priceCents: it.priceCents, subtotalCents: it.quantity * it.priceCents })),
+      orderId: created.id,
+      orderNumber: created.orderNumber,
+      totalCents: created.totalCents,
+      paymentMethod: paymentMethod === 'CASH' ? 'efectivo' : 'transferencia',
+      items: created.items.map((it) => ({ productId: it.productId, quantity: it.quantity, priceCents: it.priceCents, subtotalCents: it.quantity * it.priceCents })),
       customer: {
-        id: order.customer.id,
-        nombre: order.customer.name,
-        telefono: order.customer.phone,
-        direccion: order.customer.address,
-        localidad: order.customer.city,
-        provincia: order.customer.province,
-        codigoPostal: order.customer.postalCode,
+        id: created.customer.id,
+        nombre: created.customer.name,
+        telefono: created.customer.phone,
+        direccion: created.customer.address,
+        localidad: created.customer.city,
+        provincia: created.customer.province,
+        codigoPostal: created.customer.postalCode,
       },
     };
 
+    // Post-commit email: fire-and-forget; never blocks confirmation, never throws to the route.
+    Promise.resolve()
+      .then(() => sendOrderConfirmationEmail(response))
+      .catch(() => {
+        console.error('email: send failed (provider error swallowed)');
+      });
+
     return res.json(response);
   } catch (err) {
+    if (err instanceof OrderConfirmDomainError) {
+      return res.status(err.status).json(err.body);
+    }
     console.error('Error confirmando orden:', err);
     res.status(500).json({ error: 'Internal Server Error' });
   }
