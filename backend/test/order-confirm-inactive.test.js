@@ -2,6 +2,9 @@
 // contain admin soft-deleted (active=false) products with a 400.
 // Stubs the prisma client via the require cache and drives a real HTTP
 // server (stdlib http only, no supertest) so no real DB is needed.
+// Updated for the transactional confirmation flow: stub now exposes
+// $transaction(fn) and tx.product.updateMany so the route can run inside
+// a single DB unit without touching a real database.
 // Run: node test/order-confirm-inactive.test.js
 
 const assert = require('assert');
@@ -11,10 +14,32 @@ const path = require('path');
 
 // --- Stub prismaClient BEFORE app.js is required (it captures it at import) ---
 const carts = new Map();
+const products = new Map();
 
-const fakePrisma = {
-  cart: { findUnique: async ({ where: { id } }) => carts.get(id) || null },
-  cartItem: { deleteMany: async () => ({ count: 0 }) },
+const tx = {
+  product: {
+    updateMany: async ({ where: { id }, data: { stock: { decrement } } }) => {
+      const p = products.get(id);
+      if (!p || p.active === false || p.stock < decrement) return { count: 0 };
+      p.stock -= decrement;
+      return { count: 1 };
+    },
+    findUnique: async ({ where: { id } }) => {
+      const p = products.get(id);
+      return p ? { ...p } : null;
+    },
+  },
+  cart: {
+    findUnique: async ({ where: { id } }) => {
+      const c = carts.get(id);
+      if (!c) return null;
+      return {
+        ...c,
+        items: (c.items || []).map((it) => ({ ...it, product: { ...it.product } })),
+        customer: c.customer ? { ...c.customer } : null,
+      };
+    },
+  },
   order: {
     create: async () => ({
       id: 99, orderNumber: 'CL-123456', totalCents: 50,
@@ -23,7 +48,11 @@ const fakePrisma = {
       customer: { id: 42, name: 'Test', phone: '1', address: 'a', city: 'c', province: 'p', postalCode: '1' },
     }),
   },
-  product: {},
+  cartItem: { deleteMany: async () => ({ count: 0 }) },
+};
+
+const fakePrisma = {
+  $transaction: async (fn) => fn(tx),
 };
 
 const origResolve = Module._resolveFilename;
@@ -39,6 +68,7 @@ require.cache['__stub_prismaClient__'] = {
 };
 
 process.env.JWT_SECRET = process.env.JWT_SECRET || 'test-secret';
+process.env.EMAIL_PROVIDER = process.env.EMAIL_PROVIDER || 'noop';
 const app = require('../app');
 
 function test(name, fn) {
@@ -73,6 +103,10 @@ const server = http.createServer(app);
 
 async function run() {
   await new Promise((r) => server.listen(0, '127.0.0.1', r));
+
+  // Seed products map for active/inactive scenarios.
+  products.set(10, { id: 10, title: 'Caramelo', priceCents: 100, active: false, stock: 5 });
+  products.set(11, { id: 11, title: 'Activo', priceCents: 50, active: true, stock: 5 });
 
   // Case 1: cart with one inactive product -> 400 with inactiveProducts info.
   carts.set('cart-inactive', {

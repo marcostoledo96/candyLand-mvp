@@ -152,6 +152,73 @@ Chain strategy: size-exception
 - [ ] 9.4 Manual browser pass + DOM checks: 0 file inputs on `/trabaja-con-nosotros`, 0 `/producto/:id` on `/menu`. (Deferred — verify phase.)
 - [ ] 9.5 Hand off to `sdd-archive` to update `docs/INDEX.md` and `docs/FUNCIONALIDADES.md`. (Deferred — archive phase.)
 
+## 7d. Backend orders stock + emails — branch `backend/orders-stock-emails`
+
+Strict TDD (RED → GREEN → REFACTOR). No real DB, no `.env` reads. Stdlib `assert` + stubbed Prisma + stubbed `fetch`. This section supersedes section 6 for this branch.
+
+### Review Workload Forecast
+
+| Field | Value |
+|-------|-------|
+| Estimated changed lines | 350-500 (`app.js` transaction+decrement, NEW `services/email.js`, `.env.example` clarification, NEW `test/order-confirm-transaction.test.js`, updated `test/order-confirm-inactive.test.js`, docs touch) |
+| 400-line budget risk | Medium |
+| 800-line budget risk | Low |
+| Chained PRs recommended | No |
+| Delivery strategy | single-pr |
+| Chain strategy | size-exception (not needed) |
+
+Decision needed before apply: No
+Chained PRs recommended: No
+Chain strategy: size-exception
+400-line budget risk: Medium
+
+### Phase 1: Test scaffold (RED-first infra)
+
+- [x] 1.1 Extend Prisma stub in `backend/test/order-confirm-inactive.test.js` to expose `$transaction(async (tx) => tx)` and a tx-scoped `product.updateMany` that records call args and returns `{ count }`.
+- [x] 1.2 Add `backend/test/_record.js` exporting `makeTxStub({ products, carts, orders, fetchImpl })` for reuse by the new transaction test.
+- [x] 1.3 Document at top of new test file: no `.env` reads; only dummy `DATABASE_URL` for `prisma generate`.
+
+### Phase 2: RED — `backend/test/order-confirm-transaction.test.js`
+
+- [x] 2.1 Success path: `tx.product.updateMany` called with `{ id, active: true, stock: { gte: qty } }` and `data.stock.decrement === qty`; order+payment+items+cartItem.deleteMany all invoked; 200 response.
+- [x] 2.2 Insufficient stock: `updateMany` returns `{ count: 0 }` → 400 `{ error: 'Stock insuficiente', insufficientStock: [...] }`; no order/payment/cartItem writes.
+- [x] 2.3 Concurrent race: two confirmations on same product; first 200, second 400; loser never calls `order.create`.
+- [x] 2.4 Inactive product: 400 with `inactiveProducts[]`; no `updateMany` call.
+- [x] 2.5 Invalid payment method (e.g. `MERCADOPAGO`, `CARD`): 400; no order/payment/items/cartItem writes.
+- [x] 2.6 Non-positive quantity (0/negative/float): 400; no `updateMany` call.
+- [x] 2.7 Email provider throws after commit: route returns 200; `console.error` called with safe message (no stack).
+- [x] 2.8 No email on failed confirmation (stock/inactive/payment/quantity): `sendOrderConfirmationEmail` never called.
+- [x] 2.9 Noop provider (no `EMAIL_PROVIDER` or `=noop`): log "disabled"; no `fetch` call; route returns 200.
+- [x] 2.10 Resend provider: `EMAIL_PROVIDER=resend` + env → `fetch` called once against `https://api.resend.com/emails` with Bearer header and JSON body.
+- [x] 2.11 Deterministic order: two items in same cart, different productIds → `updateMany` calls sorted ascending by productId.
+
+### Phase 3: GREEN — implement
+
+- [x] 3.1 Wrap `/api/orders/confirm` body in `prisma.$transaction(async (tx) => { ... })` in `backend/app.js`; preserve current precheck error messages.
+- [x] 3.2 Sort items by `productId` ascending; run `tx.product.updateMany({ where: { id, active: true, stock: { gte: qty } }, data: { stock: { decrement: qty } } })` per item.
+- [x] 3.3 On `count === 0`, re-read product inside the same tx to discriminate inactive vs insufficient vs concurrent; map to 400 with the `inactiveProducts` or `insufficientStock` payload from `design.md`.
+- [x] 3.4 Re-validate `cart.paymentMethod` against allowlist `CASH`/`TRANSFER` (plus pre-normalization aliases) inside the tx; 400 on invalid.
+- [x] 3.5 Reject non-positive `quantity` per item with 400 before any `updateMany` call.
+- [x] 3.6 Move `cartItem.deleteMany` inside the same tx after `order.create`.
+- [x] 3.7 After commit, call `sendOrderConfirmationEmail(order)` inside `try/catch`; log error and never rethrow.
+- [x] 3.8 Create `backend/services/email.js` exporting `sendOrderConfirmationEmail(order)`; selects noop by default, Resend only when `EMAIL_PROVIDER=resend` and `RESEND_API_KEY`/`MAIL_FROM`/`MAIL_TO` are set; never throws; returns `{ status: 'sent'|'disabled'|'failed' }`.
+- [x] 3.9 Use Node 20 `fetch` (no `resend` SDK); JSON body with `from`/`to`/`subject`/`text`; non-2xx treated as failure.
+
+### Phase 4: REFACTOR + docs
+
+- [x] 4.1 `backend/.env.example`: default `EMAIL_PROVIDER=noop`; clarify Resend vars optional unless provider is `resend`; one-line comment that noop works with no credentials.
+- [x] 4.2 Confirm `backend/package.json` stays free of `resend` dependency; `npm ls resend` empty.
+- [x] 4.3 Update `docs/DEPLOY_RAILWAY_VERCEL.md` and `docs/INDEX.md` email env semantics; no secret values.
+- [x] 4.4 No migration: leave `backend/prisma/schema.prisma` untouched.
+
+### Phase 5: Verification (avoid `.env`)
+
+- [x] 5.1 `npm run lint` (root) and `npm run build` (root frontend) — must pass.
+- [x] 5.2 `cd backend && DATABASE_URL='postgresql://test:test@127.0.0.1:5432/test' npm run prisma:generate` — client generates without DB connect.
+- [x] 5.3 `cd backend && node test/order-confirm-inactive.test.js && node test/order-confirm-transaction.test.js` — both green.
+- [ ] 5.4 Curl smoke deferred to verify phase: `/api/health`, `/api/db/health`, `/api/productos` only; never read `.env`. (Deferred — requires disposable DB; production/shared DB access forbidden.)
+- [x] 5.5 Hand off to `sdd-verify` and `sdd-archive` to update docs. `sdd-archive` closed the documentation loop via `archive-orders-stock-emails.md` (this branch keeps per-slice artifacts in the change directory per project convention; no change-folder move, no spec merge, no new `docs/FUNCIONALIDADES.md` because functionality is already covered by `EMAILS_PEDIDOS.md`, `DEPLOY_RAILWAY_VERCEL.md` and the OpenSpec artifacts).
+
 ## 8. QA/deploy
 
 - [x] 8.1 `npm run lint`.

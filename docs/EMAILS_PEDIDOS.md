@@ -8,11 +8,11 @@ CandyLand debe enviar emails cuando entra un pedido, pero el pedido no debe fall
 
 ### Resend
 
-Recomendado para portfolio real porque en Node.js se integra con SDK y API key.
+Recomendado para portfolio real porque se integra con una API HTTP simple y API key.
 
 Ventajas:
 
-- SDK simple.
+- API HTTP simple vía `fetch` nativo de Node 20.
 - Buen encaje con Node/Express.
 - Variables claras.
 - Menos fricción que configurar SMTP si ya hay dominio verificado.
@@ -58,25 +58,27 @@ MAIL_TO=...
 Para desarrollo local sin credenciales:
 
 ```env
-EMAIL_PROVIDER=disabled
+EMAIL_PROVIDER=noop
 ```
 
-El backend debe simular éxito o registrar que el email está deshabilitado.
+El backend registra que el email está deshabilitado y el pedido no falla.
+
+> Implementado en `backend/services/email.js`: `sendOrderConfirmationEmail(order)`
+> selecciona noop por defecto y Resend vía Node 20 `fetch` sólo cuando
+> `EMAIL_PROVIDER=resend` y `RESEND_API_KEY`/`MAIL_FROM`/`MAIL_TO` están seteados.
+> No usa el SDK de Resend (ni dependencia nueva). Nunca lanza al route; devuelve
+> `{ status: 'sent' | 'disabled' | 'failed' }`. El email se envía post-commit y
+> no se intenta si la confirmación falla (stock/activo/pago/cantidad).
 
 ## Diseño recomendado
 
 ```text
 backend/
-  src/
-    services/
-      emailService.js
-      emailProviders/
-        resendProvider.js
-        smtpProvider.js
-        noopProvider.js
+  services/
+    email.js
 ```
 
-Si el backend actual no usa `src/`, adaptar a la estructura existente sin reordenar todo innecesariamente.
+Mantener la estructura existente del backend; no agregar SDK ni providers separados hasta que haga falta.
 
 ## Reglas
 
