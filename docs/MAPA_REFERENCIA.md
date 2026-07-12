@@ -33,12 +33,12 @@ Este documento compara el sitio estático de referencia (`tienda-candyland`) con
 
 | Sección referencia | Estado en MVP | Prioridad | Notas |
 |---|---|---|---|
-| Hero carousel (3 slides) | No existe | Alta | Requiere `slide1.jpg`, `slide2.jpg`, `slide3.jpg`. |
+| Hero carousel (3 slides) | Existe (slice 7e) | Cerrado | `src/components/HeroCarousel/`; autoplay, pause on hover/focus, reduced-motion, keyboard. Ver `archive-home-redesign.md`. |
 | Navbar flotante/transparente | Parcial | Media | Header existe pero no flota sobre el hero. |
-| Carrusel de categorías/productos | Parcial | Alta | MVP tiene grid estático en Home; referencia tiene carousel con hover. |
-| Banner destacados (2 cajas) | No existe | Media | `destacado-golosina1.jpg`, `destacado-golosina2.jpg`. |
-| "Nuestro Mundo Dulce" (3 cols + imagen central) | No existe | Media | `dulzura-central.jpg`. |
-| Sección locales con fondo | No existe | Baja | `fondo-locales.jpg`; puede ser decorativa. |
+| Carrusel de categorías/productos | Parcial (slice 7e) | Media | Home ahora consume `fetchProducts()` y renderiza grid ≤ 6 con hover (`HomeProductCard`); no es carousel rotativo como la referencia. Ver `archive-home-redesign.md`. |
+| Banner destacados (2 cajas) | Existe (slice 7e) | Cerrado | `src/components/HomeSections/FeaturedBanners.tsx`; links a `/catalogo` y `/menu`. Ver `archive-home-redesign.md`. |
+| "Nuestro Mundo Dulce" (3 cols + imagen central) | Parcial (slice 7e) | Cerrado (parcial) | Implementación: copy block + `dulzura-central.webp`; sin layout 3 columnas. Ver `archive-home-redesign.md`. |
+| Sección locales con fondo | Existe (slice 7e, decorativa) | Cerrado | `src/components/HomeSections/Locations.tsx`; `aria-hidden="true"`. Ver `archive-home-redesign.md`. |
 | Footer completo | Parcial | Alta | Replicar columnas, newsletter, redes. |
 
 ### Catálogo (`/catalogo`)

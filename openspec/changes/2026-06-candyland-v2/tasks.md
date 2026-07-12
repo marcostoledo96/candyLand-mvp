@@ -219,6 +219,63 @@ Chain strategy: size-exception
 - [ ] 5.4 Curl smoke deferred to verify phase: `/api/health`, `/api/db/health`, `/api/productos` only; never read `.env`. (Deferred — requires disposable DB; production/shared DB access forbidden.)
 - [x] 5.5 Hand off to `sdd-verify` and `sdd-archive` to update docs. `sdd-archive` closed the documentation loop via `archive-orders-stock-emails.md` (this branch keeps per-slice artifacts in the change directory per project convention; no change-folder move, no spec merge, no new `docs/FUNCIONALIDADES.md` because functionality is already covered by `EMAILS_PEDIDOS.md`, `DEPLOY_RAILWAY_VERCEL.md` and the OpenSpec artifacts).
 
+## 7e. Frontend home redesign — branch `frontend/home-redesign`
+
+Scope: `/` only. Native React/CSS `HeroCarousel` (3 local slides), API-driven "Nuestros Productos", 2 featured banners, "Nuestro Mundo Dulce", decorative locations. Mobile-first, light-only. Reuse `fetchProducts`, `HomeProductCard`, `PublicRoutes.module.css`, public assets. No new dependencies. No Header/Footer redesign. No `/producto/:id`. No dark mode, CMS, store locator, newsletter backend, payments, WhatsApp. No asset reorganization. No logo decision.
+
+### Review Workload Forecast
+
+| Field | Value |
+|-------|-------|
+| Estimated changed lines | 500-800 (NEW `HeroCarousel` + module CSS, 3 NEW section components, expanded `Home.tsx`/`Home.module.css`, NEW `assert:home-redesign` script) |
+| 400-line budget risk | Medium |
+| 2000-line budget risk | Low |
+| Chained PRs recommended | No |
+| Delivery strategy | single-pr |
+| Chain strategy | size-exception (not needed) |
+
+Decision needed before apply: No
+Chained PRs recommended: No
+Chain strategy: size-exception
+400-line budget risk: Medium
+2000-line budget risk: Low
+
+### Phase 1: HeroCarousel foundation
+
+- [x] 1.1 Create `src/components/HeroCarousel/HeroCarousel.tsx` accepting a 3-slide prop array (`src`, `alt`, `caption`); native React/CSS only, no deps.
+- [x] 1.2 Add `src/components/HeroCarousel/HeroCarousel.module.css` with `transform: translateX` track, focus-visible ring, `prefers-reduced-motion: reduce` instant transition.
+- [x] 1.3 Autoplay via `setInterval(4500)`; pause on `pointerenter`/focus/hover or `prefers-reduced-motion: reduce`; cleanup on unmount.
+- [x] 1.4 Keyboard: `ArrowLeft`/`ArrowRight` cycle, `Home`/`End` jump first/last; prev/next buttons with real text labels (no `aria-label` only).
+- [x] 1.5 Markup: `role="region" aria-roledescription="carousel"`; active slide `aria-hidden="false"`, siblings `true`; live region announces slide index.
+
+### Phase 2: API-driven "Nuestros Productos"
+
+- [x] 2.1 Replace the static `productos` array in `src/pages/Home/Home.tsx` with `fetchProducts()` from `src/lib/api.ts`; mirror the loading/error/empty/success pattern from `MenuPage.tsx`.
+- [x] 2.2 On success, map the products to `HomeProductCard` props (`img`, `hoverImg`, `title`); on empty `[]` show the explicit empty state (per 2.3) — no hardcoded product fallback.
+- [x] 2.3 States reuse `PublicRoutes.module.css` (`.state`/`.stateTitle`/`.stateText`/`.retryBtn`); loading renders a skeleton (no layout shift); empty uses the same classes with a `<Link to="/catalogo">` and no hardcoded products.
+
+### Phase 3: Section components
+
+- [x] 3.1 `src/components/HomeSections/NuestroMundoDulce.tsx` + module CSS: copy block + `dulzura-central.webp`; light-only background, mobile-first.
+- [x] 3.2 `src/components/HomeSections/FeaturedBanners.tsx` + module CSS: 2 banners using `destacado-golosina1.webp` and `destacado-golosina2.webp`, linking to `/catalogo` and `/menu`; real `alt` per image.
+- [x] 3.3 `src/components/HomeSections/Locations.tsx` + module CSS: decorative only, `fondo-locales.webp` background + "Encontranos en CABA y GBA" caption; `aria-hidden="true"`.
+
+### Phase 4: Compose in `Home.tsx` / `Home.module.css`
+
+- [x] 4.1 `Home.tsx` order: `HeroCarousel` → `FeaturedBanners` → `NuestrosProductos` → `NuestroMundoDulce` → `Locations`; drop the old static grid import.
+- [x] 4.2 Extend `Home.module.css` with section spacing tokens; keep `Oswald` title style; no `prefers-color-scheme: dark` tokens.
+- [x] 4.3 Do not edit `Header`, `Footer`, `App.tsx`, `lib/api.ts`, or `HomeProductCard`; route `/` is already wired. **Narrow exception (closed by `archive-home-redesign.md`)**: `HomeProductCard.tsx` was edited during verification to fix the API-image behavior — keep API / data URLs unchanged (no synthesized WebP `<source>`) and advertise a local WebP source for known local `/img/*.jpg` assets. The corrective edit is approved per bounded review and matches `verify-home-redesign.md` (`API image URL` and `Local image WebP` rows both PASS). `Header`, `Footer`, `App.tsx`, and `lib/api.ts` were not edited.
+
+### Phase 5: Verification
+
+- [x] 5.1 `npm run lint` (root) — zero warnings on touched files.
+- [x] 5.2 `npm run build` (root) — must pass.
+- [x] 5.3 NEW `scripts/assert-home-redesign.mjs` checks: zero `<input type="file">`, zero `/producto/:id` strings, zero `@media (prefers-color-scheme: dark)`, zero new entries in `package.json` `dependencies`/`devDependencies`. Wire as `assert:home-redesign` in `package.json`.
+- [x] 5.4 Runtime smoke (Playwright or manual): `/` loads 3 slides; prev/next toggles `aria-hidden`; dots change index; ArrowLeft/Right cycles; `prefers-reduced-motion: reduce` disables autoplay + animation; tab order prev → next → dots → CTAs.
+- [x] 5.5 Contract: `fetchProducts()` returning products → N cards (≤ 6); 500 error → error state with retry; `[]` → explicit empty state with `<Link to="/catalogo">` and zero hardcoded products rendered.
+- [x] 5.6 Scenario traceability: `Menu uses API` (frontend-ui-parity) → 5.5; `Light mode only` → 5.3.
+- [x] 5.7 Hand off to `sdd-verify`; defer `sdd-archive` until after verify passes.
+
 ## 8. QA/deploy
 
 - [x] 8.1 `npm run lint`.

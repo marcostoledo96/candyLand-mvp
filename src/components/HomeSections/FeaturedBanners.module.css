@@ -1,0 +1,56 @@
+/* FeaturedBanners: two highlight banners. Light-only, mobile-first. */
+
+.banners {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 18px;
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: clamp(28px, 5vw, 56px) clamp(16px, 4vw, 32px);
+}
+
+.banner {
+  display: block;
+  border-radius: 14px;
+  overflow: hidden;
+  position: relative;
+  text-decoration: none;
+  transition: transform 0.25s ease, box-shadow 0.25s ease;
+}
+
+.banner:hover {
+  transform: translateY(-3px);
+  box-shadow: 0 10px 26px rgba(236, 108, 172, 0.18);
+}
+
+.banner:focus-visible {
+  outline: 3px solid #ec6cac;
+  outline-offset: 3px;
+}
+
+.bannerImg {
+  display: block;
+  width: 100%;
+  height: clamp(180px, 28vw, 320px);
+  object-fit: cover;
+}
+
+.bannerLabel {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  padding: 14px 18px;
+  background: linear-gradient(to top, rgba(0, 0, 0, 0.55), transparent);
+  color: #fff;
+  font-family: 'Oswald', sans-serif;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  font-size: clamp(0.95rem, 2vw, 1.2rem);
+}
+
+@media (max-width: 640px) {
+  .banners {
+    grid-template-columns: 1fr;
+  }
+}

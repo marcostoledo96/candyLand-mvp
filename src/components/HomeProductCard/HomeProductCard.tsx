@@ -10,15 +10,16 @@ interface HomeProductCardProps {
 const HomeProductCard: React.FC<HomeProductCardProps> = ({ img, hoverImg, title }) => {
   const toWebp = (p: string) => p.replace(/\.(jpg|jpeg|png)$/i, ".webp");
   const convertible = /\.(jpg|jpeg|png)$/i;
+  const webpSource = (p: string) => p.startsWith('/img/') && convertible.test(p);
   return (
     <div className={styles.producto}>
       <div className={styles.imagenHover}>
         <picture>
-          {convertible.test(img) && <source srcSet={toWebp(img)} type="image/webp" />}
+          {webpSource(img) && <source srcSet={toWebp(img)} type="image/webp" />}
           <img src={img} alt={title} loading="lazy" decoding="async" />
         </picture>
         <picture>
-          {convertible.test(hoverImg) && <source srcSet={toWebp(hoverImg)} type="image/webp" />}
+          {webpSource(hoverImg) && <source srcSet={toWebp(hoverImg)} type="image/webp" />}
           <img src={hoverImg} alt={`${title} Hover`} className={styles.hoverImg} loading="lazy" decoding="async" />
         </picture>
       </div>
