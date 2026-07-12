@@ -36,7 +36,7 @@
 - [x] 4.3 Crear endpoints admin productos.
 - [x] 4.4 Crear endpoints admin categorías. (deferred to follow-up branch)
 - [x] 4.5 Crear endpoints admin pedidos. (deferred to follow-up branch)
-- [ ] 4.6 Crear pantallas admin.
+- [x] 4.6 Crear pantallas admin. [Partial — auth + products list/deactivate/reactivate shipped in slice 7f; product form + category CRUD + order UI deferred.]
 - [x] 4.7 Proteger rutas admin.
 
 ## 5. Productos y stock
@@ -275,6 +275,146 @@ Chain strategy: size-exception
 - [x] 5.5 Contract: `fetchProducts()` returning products → N cards (≤ 6); 500 error → error state with retry; `[]` → explicit empty state with `<Link to="/catalogo">` and zero hardcoded products rendered.
 - [x] 5.6 Scenario traceability: `Menu uses API` (frontend-ui-parity) → 5.5; `Light mode only` → 5.3.
 - [x] 5.7 Hand off to `sdd-verify`; defer `sdd-archive` until after verify passes.
+
+## 7f. Frontend admin — auth + products only (branch `frontend/admin-auth-products`)
+
+Corrective narrowed scope: `/admin/login`, `/api/admin/me` bootstrap, sessionStorage token (8h TTL, no refresh, no cookie, no localStorage), logout/central 401 clear, protected shell outside public `Header`/`Footer`, product list loading/error/empty/success, deactivate/reactivate, responsive/a11y/error states. Reuse `PublicRoutes.module.css`; no dependencies, dark mode, `dangerouslySetInnerHTML`, or token logging.
+
+Deferred to `frontend/admin-product-form`: create/edit modal, create/update/get-product/categories-for-form API, and form validation helpers. Other out-of-scope work remains category CRUD/order UI, backend/schema/auth-cookie changes, user management, password reset, MFA, uploads, permanent deletion, bulk actions, pagination/search/analytics, dark mode, payments, WhatsApp, and `/producto/:id`.
+
+### Review Workload Forecast
+
+| Field | Value |
+|-------|-------|
+| Estimated changed lines (corrective narrowed apply) | <=1,550 (auth/list shell + durable node:test + static assert + Playwright-MCP runtime smoke + docs) |
+| 2000-line budget risk | High (approaches hard cap) |
+| Chained PRs recommended | No (user direction: no chain) |
+| Delivery strategy | single-pr (user accepts the high-risk near-limit slice; not a budget waiver) |
+| Chain strategy | size-exception (single-PR delivery label only; not a budget exception) |
+
+Decision needed before apply: Yes
+Chained PRs recommended: No
+Chain strategy: size-exception
+400-line budget risk: High
+800-line budget risk: High
+2000-line budget risk: High
+
+**Workload policy (hard 2,000-line cap, not overridable)**:
+
+- **1,600-1,900 lines = approach zone**: require explicit user approval before `sdd-apply` proceeds. The user's approval is framed as **"accepting the high-risk near-limit slice"**, not a budget exception to exceed the cap.
+- **If live forecast or measured diff exceeds 1,900 lines**: PAUSE `sdd-apply` immediately and reforecast.
+- **If projected final total would exceed 2,000 lines**: SPLIT immediately by deferring `AdminProductForm` (create/edit modal, Phase 6) — or another autonomous boundary — to a follow-up branch. Keep durable Node tests, static assertions, **Playwright runtime smoke**, accessibility, and error states in this slice. **Never proceed beyond 2,000.**
+- **No `size:exception` to exceed the cap.** The 2,000-line hard limit is not overridable. Playwright runtime tests, accessibility, and error states MUST NOT be sacrificed to fit budget.
+- **No chained PR** (user direction); the only delivery mode is single-PR.
+
+### Threat matrix → RED tests (every row becomes a task)
+
+> Corrective split: form-only rows T3-T12 that depend on create/edit/category/image validation are deferred with Phase 6; retained T1/T2 and T13-T20 are covered in this branch.
+
+| ID | Case | Expected safe/failure behavior | Production task | RED test task |
+|----|------|-------------------------------|-----------------|---------------|
+| T1 | `/api/admin/me` returns 401 (token missing/expired/cleared) on app load | `clearAdminToken()` called; `<Navigate to="/admin/login" replace />` | 3.3 | 3.4 + 1.10 |
+| T2 | Any admin call returns 401 mid-session (products/categories/PATCH) | Same as T1; no UI crash; error state shows "Sesión expirada" | 2.4 | 1.10 |
+| T3 | Form `priceCents` is negative or decimal (`"12.5"`, `-1`, `"abc"`) | `parsePriceInput` returns `{ok:false, error}`; form blocks submit; field error shown | 1.1/1.2 | 1.1 |
+| T4 | Form `stock` is negative or non-integer | `validateProductPayload` returns error on `stock`; form blocks submit | 1.3/1.4 | 1.3 |
+| T5 | `categoryId` missing or not positive integer | Validation error; backend 400 mapped to `categoryId` field | 1.3/1.4 / 6.1 | 1.3 / 6.3 |
+| T6 | `imageUrl` = `javascript:alert(1)` or `vbscript:` or `file:` | `isSafeAdminImageUrl` returns false; field error; submit blocked | 1.5/1.6 | 1.5 |
+| T7 | `imageUrl` = `https://cdn.example.com/x.jpg` | Accepted (http/https allowlist) | 1.5/1.6 | 1.5 |
+| T8 | `imageUrl` = `data:image/png;base64,...` | Accepted (matches `productImage.js` policy) | 1.5/1.6 | 1.5 |
+| T9 | `imageUrl` = `""` or `null` or `undefined` | Accepted (optional field) | 1.5/1.6 | 1.5 |
+| T10 | Backend returns 400 with `{ error, errors: [...] }` on POST/PATCH | `extractApiError` maps to field-level errors; form preserves input; no clear | 2.4 / 6.1 | 1.7 / 1.8 |
+| T11 | Backend returns 400 with `categoryId does not exist` | Same as T10 with `categoryId` field highlighted | 2.4 | 1.7 |
+| T12 | Backend returns 401 on POST `/api/admin/products` | `clearAdminToken` + redirect; mutation does not silently succeed | 2.4 | 1.10 |
+| T13 | Click "Cerrar sesión" in `AdminLayout` | `clearAdminToken()` called; `navigate('/admin/login')`; no residual token in sessionStorage | 3.1 | 8.1 (static assert) |
+| T14 | XSS via product title/description in list/edit | React default escaping; no `dangerouslySetInnerHTML`; no `eval`/`new Function` on payload | 5.1 / 6.1 | 8.1 |
+| T15 | Deactivate vs hard-delete | Only `DELETE /api/admin/products/:id` (soft → `active=false`); no SQL/shell; backend handles | 5.1 | 1.3 (active field rules) |
+| T16 | Reactivate a deactivated product | `PATCH /api/admin/products/:id` with `{active:true}`; distinct UI action from create | 5.1 | 1.3 (active boolean validation) |
+| T17 | sessionStorage throws (private mode, quota) | `AdminAuthError` surfaced; user sees "No se pudo guardar la sesión" instead of silent failure | 2.1 | 1.7 / 1.8 |
+| T18 | Public routes regression (Header/Footer outside admin) | `App.tsx` nested route group; assert-public-routes still PASS | 7.1 | 9.3 / 9.4 |
+| T19 | Token leaked to console | No `console.log`/`console.error` of any token or localStorage/sessionStorage value | N/A (rule) | 8.1 |
+| T20 | Dark mode added by mistake | Zero `@media (prefers-color-scheme: dark)` in admin CSS | 3.2 / 5.2 | 8.1 |
+
+### Phase 1: Auth helpers (RED → GREEN, `node --test`)
+
+- [x] 1.9 RED token decode/expiry tests in `test/admin-auth-products.test.mjs`.
+- [x] 1.10 GREEN `src/lib/adminAuth.js` token decode/expiry helpers.
+- [ ] 1.1-1.8 Form validation helpers/tests — DEFERRED to `frontend/admin-product-form`; no `adminValidation.js` ships in this slice.
+
+### Phase 2: sessionStorage token + admin API client
+
+- [x] 2.1 `src/lib/adminAuth.js` — `getAdminToken()`, `setAdminToken(token)`, `clearAdminToken()`; sessionStorage scoped; throw `AdminAuthError` on `QuotaExceededError`/`SecurityError`; never log the token; the key constant is `admin_token` (single key, easy to audit).
+- [x] 2.2 `src/lib/adminApi.js` retains only login, `/me`, list, deactivate, reactivate; each has auth header + central 401 clear. Form-only create/update/get-product/categories APIs are DEFERRED.
+- [x] 2.3 `AdminApiError` + `AdminAuthError` support retained API calls.
+- [x] 2.4 RED fetch-stub tests cover login, `/me`, list, deactivate/reactivate, 401 clear, auth header, and network error.
+
+### Phase 3: AdminLayout + RequireAdminAuth
+
+- [x] 3.1 `src/pages/Admin/AdminLayout.tsx` — `<Outlet />`, sidebar nav (Productos active, Categorías + Pedidos `aria-disabled` with note "Próximamente"), top bar with admin email (from `decodeAdminTokenPayload(getAdminToken())`) + "Cerrar sesión" button (clears token + `navigate('/admin/login')`); light-only, mobile-first; **must not import** `Header` or `Footer`; verify with `assert-admin-auth-products.mjs`.
+- [x] 3.2 `src/pages/Admin/AdminLayout.module.css` — sidebar, top bar, responsive (collapse to top tabs on `<768px`), focus-visible ring on every interactive element, no `prefers-color-scheme: dark`.
+- [x] 3.3 `src/components/Admin/RequireAdminAuth.tsx` — `useEffect` calls `getAdminMe(getAdminToken())`; on 200 renders children; on 401 calls `clearAdminToken()` + `<Navigate to="/admin/login" replace state={{from: location.pathname}} />`; on network error shows `PublicRoutes.module.css` retry state; on no token redirects immediately; loading state uses `PublicRoutes.module.css` busy.
+- [x] 3.4 RED — test in `test/admin-auth-products.test.mjs`: with stubbed `global.fetch`, simulate 401 → `clearAdminToken` called; simulate 200 → no redirect; malformed token → no redirect until `/me` confirms; pure logic only (rendering covered by Playwright). [Covered via adminApi 401 tests + RequireAdminAuth component logic.]
+
+### Phase 4: AdminLogin
+
+- [x] 4.1 `src/pages/Admin/AdminLogin.tsx` — form (`email`, `password` with `autoComplete="current-password"`); `aria-live="polite"` status; loading/error/success states reusing `PublicRoutes.module.css` (`state`, `stateTitle`, `stateText`, `retryBtn`); preserves input on error (never clears on 4xx); clears only on success then `navigate(state.from ?? '/admin/productos', {replace:true})`; submit disabled while loading; no `alert()`.
+- [x] 4.2 No separate CSS module — reuse `PublicRoutes.module.css`. Document in static assert.
+- [x] 4.3 Render checks covered by completed Phase 11 Playwright-MCP runtime smoke; retained auth API behavior covered by Phase 2 tests.
+
+### Phase 5: AdminProductsList (read + deactivate + reactivate)
+
+- [x] 5.1 `src/pages/Admin/AdminProductsList.tsx` — table with loading/error/empty/success, active badges, deactivate/reactivate + refetch. Create/edit display only a documented "Próximamente" boundary for the deferred form branch.
+- [x] 5.2 `src/pages/Admin/AdminProductsList.module.css` — table styles, `.badge.active`/`.badge.inactive`, action buttons, responsive (table → card list on `<640px`), focus-visible, no dark-mode tokens. Modal styles deferred with AdminProductForm to follow-up branch.
+- [x] 5.3 RED — `assert-admin-auth-products.mjs`: page calls `listAdminProducts`; renders price as `pesos` (formatted cents); never uses `dangerouslySetInnerHTML`; never imports `Header`/`Footer`; handles inactive products with a visible badge (not a hidden row). [isSafeAdminImageUrl check deferred with form — no image preview in list view.]
+
+### Phase 6: AdminProductForm (create + edit modal) — DEFERRED per workload policy split
+
+> **Deferred to `frontend/admin-product-form`**: modal UI, form-only API methods and `adminValidation.js`, plus their tests/assertions. None of that code ships in this narrowed slice.
+
+- [ ] 6.1 `src/pages/Admin/AdminProductForm.tsx` (child of `AdminProductsList.tsx`, not a separate page) — modal with fields: `title` (text, required, maxlength 200), `description` (textarea, optional), `price` (text input, formatted with thousands sep, parsed via `parsePriceInput` → cents), `stock` (number, min 0, integer), `categoryId` (`<select>` populated by `listAdminCategories` with `(Sin categoría)` placeholder if empty), `imageUrl` (text, validated by `isSafeAdminImageUrl`), `hoverImageUrl` (same), `active` (checkbox, default true for create, current value for edit). Save calls `createAdminProduct` or `updateAdminProduct`; errors mapped via `extractApiError` to per-field messages; input preserved on error; clear on success and close modal; submit disabled while in flight; `aria-live` status; Esc closes; focus trap (small, 2-3 focusable); no file input.
+- [ ] 6.2 Append `.form`, `.field`, `.error`, `.modal` rules to `src/pages/Admin/AdminProductsList.module.css` (single CSS module for both pages). Reuse where possible.
+- [ ] 6.3 RED — `assert-admin-auth-products.mjs`: form has zero `<input type="file">`; calls `parsePriceInput` and `validateProductPayload` before submit; uses `<select>` for `categoryId`; calls `isSafeAdminImageUrl` on both image fields; handles backend 400 with field-level errors; never logs token.
+- [ ] 6.4 RED form validation tests — deferred with 6.1-6.3.
+
+### Phase 7: Routing integration
+
+- [x] 7.1 Refactor `src/App.tsx` — extract public routes into nested `<Route element={<Layout />}>` group; add admin routes **outside** that group: `/admin/login` → `AdminLogin`; `/admin` → `<Navigate to="/admin/productos" replace />`; `/admin/productos` → `<RequireAdminAuth><AdminLayout /></RequireAdminAuth>` with `<AdminProductsList />` as child via `<Outlet />`. All admin pages lazy-imported. Confirm `Header` and `Footer` imports stay inside the public `<Route element={<Layout />}>` only.
+- [x] 7.2 Public regression: run `npm run assert:public-routes`, `npm run assert:home-redesign`, `npm test` — all must still pass before declaring 7f done.
+
+### Phase 8: Static contract assertions
+
+- [x] 8.1 NEW `scripts/assert-admin-auth-products.mjs` — checks: admin routes registered in `App.tsx`; `AdminLayout` and `AdminLogin` do not import `Header` or `Footer`; `AdminProductsList` calls `listAdminProducts`; `RequireAdminAuth` calls `getAdminMe` and handles 401 with `clearAdminToken`; zero `console.log`/`console.error` of any `adminToken`/`token`/`getItem`/`sessionStorage`; zero `dangerouslySetInnerHTML`; zero `@media (prefers-color-scheme: dark)` in admin CSS; no new entries in `package.json` `dependencies`/`devDependencies`; `/admin` redirects to `/admin/productos`; `AdminLogin` uses `PublicRoutes.module.css` state classes; `AdminLayout` has a "Cerrar sesión" button. Wire as `assert:admin-auth-products` in `package.json`. [AdminProductForm checks deferred with Phase 6.]
+
+### Phase 9: Public regression + lint/build + backend contract
+
+- [x] 9.1 `npm run lint` — zero warnings on touched files.
+- [x] 9.2 `npm run build` — must pass.
+- [x] 9.3 `npm run assert:public-routes` — must pass.
+- [x] 9.4 `npm run assert:home-redesign` — must pass.
+- [x] 9.5 `npm test` — must pass (durable tests + `home-redesign.test.mjs` + `admin-auth-products.test.mjs`).
+- [x] 9.6 Backend contract: `cd backend && DATABASE_URL='postgresql://test:test@127.0.0.1:5432/test' node test/admin-auth.test.js && node test/admin-middleware.test.js` — must pass (no contract drift). **Safe**: no `.env` read, no real DB, no production secret.
+- [x] 9.7 Hand off to `sdd-verify`; defer `sdd-archive` until after verify passes.
+
+### Phase 10: Documentation
+
+- [x] 10.1 NEW `docs/AUTENTICACION.md` — admin auth contract: `POST /api/admin/login`, `/api/admin/me` bootstrap on admin shell mount, sessionStorage token (`admin_token` key, 8h TTL, no refresh, no cookie, no localStorage), 401 handling (clear + redirect to `/admin/login`), sign out flow, no password reset, no MFA, no user management. Cross-link to `backend/routes/admin.js`, `backend/middleware/admin.js`, `backend/utils/jwt.js`.
+- [x] 10.2 Extend `openspec/changes/2026-06-candyland-v2/design.md` "Admin auth" section with a 6-step flow: 1) POST `/api/admin/login` → `{token, user}`; 2) `setAdminToken(token)`; 3) navigate to `/admin/productos`; 4) `RequireAdminAuth` calls `/api/admin/me`; 5) 200 → render shell; 6) 401 → `clearAdminToken` + redirect.
+- [x] 10.3 Update `docs/INDEX.md` with the admin slice link + one-line summary (auth + products only; categories + orders deferred).
+- [x] 10.4 Do **not** add a new `docs/FUNCIONALIDADES.md` (the admin scope is still partial; documenting it as a feature inventory is premature; the per-slice `archive-admin-auth-products.md` will own the slice closure).
+
+### Phase 11: Playwright runtime smoke (mandatory)
+
+- [x] 11.1 `test/admin-auth-products.playwright.mjs` runs through the configured Playwright MCP runtime with safe route mocks: login error/success, `/me` bootstrap/401/network retry/logout, product loading/error/empty/list/401 redirect, deactivate/reactivate, keyboard focus, 390px layout, and clean console/network result (14 scenarios, 0 unexpected errors).
+- [x] 11.2 `npm run test:admin-runtime` documents the configured Playwright-MCP runner; no project dependency added.
+
+### Phase 12: Verification handoff
+
+- [x] 12.1 Hand off to `sdd-verify`. Expected report: lint/build pass, all 3 static assert scripts pass, durable tests pass, Playwright runtime pass, backend admin contract tests pass, scenario traceability covered.
+- [x] 12.2 Defer `sdd-archive` until after verify passes; expected per-slice `archive-admin-auth-products.md` (no spec merge; per-slice archive convention matches `archive-home-redesign.md`).
+
+### Slice 7f verification remediation
+
+- [x] R1 RED/GREEN: `/me` network retry performs a second validation request without applying state after unmount.
+- [x] R2 RED/GREEN: product API 401 expires the shared admin session and redirects the protected UI; non-401 errors remain local error states.
 
 ## 8. QA/deploy
 
