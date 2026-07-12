@@ -84,10 +84,91 @@ The system MUST expose admin-only endpoints to list and update orders. Listing M
 - WHEN `GET /api/admin/orders/:id`
 - THEN the system MUST return order, items (with product reference, quantity, unit price), totals, payment method and contact fields.
 
-## Out of scope
+## Prior Backend Slice Out of Scope (preserved)
+
+These boundaries apply to the preceding backend scope, not this product-form addition.
 
 - Public form/checkout endpoints.
 - Admin UI screens.
 - Payment integrations.
 - Stock or email checkout changes.
 - Public product detail page `/producto/:id`.
+
+## ADDED Requirements (Product Form Slice)
+
+### Requirement: Admin Product Form Data and Validation
+
+The authenticated admin UI MUST provide one create/edit dialog. Create MUST default `active` to true; edit MUST initialize from the selected product DTO, without a detail request or stale-data merge. It MUST submit `title`, positive-integer `categoryId`, whole-peso `price` converted exactly to integer `priceCents` (`pesos * 100`), nonnegative integer `stock`, `active`, and optional `description`, `imageUrl`, and `hoverImageUrl`. URL fields MUST be text-only and MAY be empty; nonempty values MUST use `http:`, `https:`, or base64 `data:image/(png|jpeg|webp|gif)`. The dialog MUST NOT render file-upload controls.
+
+#### Scenario: APF-01 Create a valid product
+- GIVEN categories are available and required values are valid
+- WHEN the admin saves a new product with whole pesos
+- THEN the request contains integer `priceCents` exactly equal to pesos times 100
+- AND optional blank fields follow the API contract
+
+#### Scenario: APF-02 Edit from the list DTO
+- GIVEN an existing product row is selected
+- WHEN the edit dialog opens and is saved
+- THEN it uses that DTO as its initial state and PATCHes that product ID
+- AND it does not request a product-detail endpoint or silently merge newer data
+
+#### Scenario: APF-03 Block invalid local input
+- GIVEN price is fractional/invalid, stock is negative/non-integer, categoryId is invalid, or an image URL is unsafe
+- WHEN the admin submits
+- THEN the dialog MUST show local field feedback and MUST NOT send a mutation
+
+### Requirement: Read-Only Category Options
+
+The dialog MUST load read-only category options. It MUST expose loading, retryable error, empty, and success states; while no valid category can be selected, it MUST prevent submission.
+
+#### Scenario: APF-04 Show category options
+- GIVEN category loading is pending
+- WHEN the dialog opens
+- THEN it MUST announce loading and prevent saving
+
+#### Scenario: APF-05 Populate category options
+- GIVEN category loading succeeds with one or more categories
+- WHEN the dialog is ready
+- THEN it MUST present their IDs/names in the category selector
+
+#### Scenario: APF-06 Handle category loading failure or emptiness
+- GIVEN category loading fails or returns no categories
+- WHEN the dialog is displayed
+- THEN it MUST show the respective error/retry or empty state and block saving
+
+### Requirement: Form Submission Outcomes
+
+The dialog MUST prevent duplicate submission while a mutation is pending. On success it MUST refresh the list and close. On backend 400, it MUST preserve inputs and render `error` plus every backend `errors: string[]` member; it MAY associate only unambiguous field-prefixed messages with a field and MUST show others in a form summary. On 401 it MUST preserve inputs until the existing session-expiry flow redirects to login.
+
+#### Scenario: APF-07 Save success
+- GIVEN a valid create or edit request resolves successfully
+- WHEN the response arrives
+- THEN the dialog closes and the list refreshes from the server
+
+#### Scenario: APF-08 Reject or expire safely
+- GIVEN a mutation returns 400 with string-array errors or returns 401
+- WHEN the response arrives
+- THEN inputs remain unchanged and the errors are visible, or the existing 401 redirect occurs
+
+#### Scenario: APF-09 Prevent duplicate save
+- GIVEN a save is pending
+- WHEN the admin submits again
+- THEN no second mutation is sent and the saving state is announced
+
+### Requirement: Accessible Responsive Light-Only Dialog
+
+The dialog MUST have an accessible name, labels, visible focus, and live status/error feedback. On open it MUST focus the first form control; Escape MUST close without saving and restore focus to the invoker. It MUST remain usable on narrow viewports and use light-only styling.
+
+#### Scenario: APF-10 Keyboard dialog lifecycle
+- GIVEN the admin opens the dialog from a product action
+- WHEN focus enters, Escape is pressed, or the dialog closes after success
+- THEN focus moves to the first control, closes without mutation on Escape, and returns to the invoker
+
+#### Scenario: APF-11 Narrow, light-only presentation
+- GIVEN the viewport is narrow
+- WHEN the dialog is opened
+- THEN all controls remain operable without a dark-mode variant
+
+## Product Form Slice Boundaries
+
+The product-form slice MUST NOT add category CRUD, orders, backend/schema/auth changes, a detail endpoint, uploads, permanent deletion, bulk actions, search, pagination, or dependencies.

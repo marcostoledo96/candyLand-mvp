@@ -1,8 +1,6 @@
 // Static contract assertions for admin auth + products (slice 7f, narrowed).
 // Verifies: admin routes, no Header/Footer, logout, 401 handling, no token
 // logging, no dangerouslySetInnerHTML, no dark mode, no new deps.
-// Form-only checks (parsePriceInput, validateProductPayload, isSafeAdminImageUrl,
-// extractApiError, AdminProductForm) are deferred to follow-up branch.
 // Run: npm run assert:admin-auth-products
 
 import { readFileSync, existsSync } from 'node:fs';
@@ -95,6 +93,8 @@ if (existsSync(listPath)) {
   check('AdminProductsList does NOT import Header', !/import.*Header/.test(lp));
   check('AdminProductsList does NOT import Footer', !/import.*Footer/.test(lp));
   check('AdminProductsList has aria-live for mutations', /aria-live/.test(lp));
+  check('AdminProductsList mounts AdminProductForm', /AdminProductForm/.test(lp));
+  check('AdminProductsList has no "Próximamente" form stub', !/Crear producto — Próximamente|creación de productos estará disponible próximamente/i.test(lp));
 }
 const listCssPath = src('pages/Admin/AdminProductsList.module.css');
 if (existsSync(listCssPath)) {
@@ -108,10 +108,21 @@ if (existsSync(listCssPath)) {
 check('adminAuth.js exists', existsSync(src('lib/adminAuth.js')));
 check('adminApi.js exists', existsSync(src('lib/adminApi.js')));
 check('Playwright-MCP runtime smoke exists', existsSync(join(root, 'test', 'admin-auth-products.playwright.mjs')));
-// adminValidation.js is form-only — deferred to follow-up branch
+const formPath = src('pages/Admin/AdminProductForm.tsx');
+const formCssPath = src('pages/Admin/AdminProductForm.module.css');
+check('AdminProductForm exists', existsSync(formPath));
+if (existsSync(formPath)) {
+  const form = read(formPath);
+  check('AdminProductForm uses native dialog', /<dialog/.test(form) && /showModal/.test(form));
+  check('AdminProductForm has no file input', !/type="file"/.test(form));
+  check('AdminProductForm has category select', /<select/.test(form) && /categoryId/.test(form));
+  check('AdminProductForm validates and maps backend errors', /validateProductPayload/.test(form) && /extractApiError/.test(form));
+  check('AdminProductForm has no detail endpoint', !/getAdminProduct|\/api\/admin\/products\//.test(form));
+}
+if (existsSync(formCssPath)) check('AdminProductForm CSS is light-only and has focus-visible', !/prefers-color-scheme:\s*dark/.test(stripComments(read(formCssPath))) && /focus-visible/.test(read(formCssPath)));
 
 // --- Security: no console.log of token/sessionStorage ---
-const adminFiles = [layoutPath, loginPath, requirePath, listPath, src('lib/adminApi.js'), src('lib/adminAuth.js')];
+const adminFiles = [layoutPath, loginPath, requirePath, listPath, formPath, src('lib/adminApi.js'), src('lib/adminAuth.js')];
 let hasTokenLog = false;
 for (const f of adminFiles) {
   if (!existsSync(f)) continue;
@@ -123,6 +134,7 @@ check('No console.log/error of token/sessionStorage values', !hasTokenLog);
 // --- package.json: no new deps, assert script wired ---
 const pkg = JSON.parse(read(join(root, 'package.json')));
 check('package.json has assert:admin-auth-products script', /assert:admin-auth-products/.test(JSON.stringify(pkg.scripts || {})));
+check('package.json has product form test/assert scripts', /test:admin-product-form/.test(JSON.stringify(pkg.scripts || {})) && /assert:admin-product-form/.test(JSON.stringify(pkg.scripts || {})));
 check('package.json dependencies count unchanged (9)', Object.keys(pkg.dependencies || {}).length === 9);
 check('package.json devDependencies count unchanged (11)', Object.keys(pkg.devDependencies || {}).length === 11);
 

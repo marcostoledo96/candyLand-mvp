@@ -1,0 +1,15 @@
+.dialog { width: min(100% - 24px, 640px); max-height: calc(100dvh - 24px); border: 0; border-radius: 16px; padding: 0; background: #fffafc; color: #352023; box-shadow: 0 24px 70px #4a2c2a66; }
+.dialog::backdrop { background: #4a2c2a88; }
+.form { display: grid; gap: 14px; padding: 22px; overflow: auto; max-height: inherit; }
+.heading, .actions, .twoCols { display: flex; gap: 12px; align-items: center; justify-content: space-between; }
+.field { display: grid; gap: 5px; font-weight: 700; }
+.field input, .field textarea, .field select { width: 100%; box-sizing: border-box; border: 1px solid #b08968; border-radius: 7px; padding: 10px; background: #fff; color: inherit; font: inherit; }
+.field textarea { min-height: 80px; resize: vertical; }
+.fieldError, .summary { color: #9b1730; font-weight: 600; }
+.summary { border: 1px solid #d74561; background: #fff0f2; padding: 10px; border-radius: 7px; }
+.check { font-weight: 700; }
+.actions button, .heading button, .summary button { border: 1px solid #c74d83; border-radius: 7px; padding: 9px 14px; background: #fff; color: #8e2353; font: inherit; cursor: pointer; }
+.actions button[type='submit'] { background: #c74d83; color: #fff; }
+.actions button:disabled { opacity: .65; cursor: wait; }
+.dialog :focus-visible { outline: 3px solid #4a2c2a; outline-offset: 2px; }
+@media (max-width: 520px) { .form { padding: 16px; } .twoCols { display: grid; } .heading { align-items: flex-start; } }
