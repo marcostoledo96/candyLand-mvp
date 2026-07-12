@@ -61,6 +61,8 @@ const App: React.FC = () => {
         >
           <Route index element={<AdminProductsList />} />
         </Route>
+        <Route path="/admin/categorias" element={<RequireAdminAuth><Navigate to="/admin/productos" replace /></RequireAdminAuth>} />
+        <Route path="/admin/pedidos" element={<RequireAdminAuth><Navigate to="/admin/productos" replace /></RequireAdminAuth>} />
       </Routes>
       </Suspense>
     </Router>

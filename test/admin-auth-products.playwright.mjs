@@ -70,6 +70,16 @@ async (page) => {
   });
 
   await page.setViewportSize({ width: 1280, height: 800 });
+  await page.goto('http://127.0.0.1:4182/contacto');
+  await page.getByRole('heading', { name: 'COMUNICATE CON NOSOTROS' }).waitFor();
+  assert(await page.locator('header').isVisible(), 'public Header missing');
+  assert(await page.locator('footer').isVisible(), 'public Footer missing');
+
+  for (const path of ['categorias', 'pedidos']) {
+    await page.goto(`http://127.0.0.1:4182/admin/${path}`);
+    await page.waitForURL('**/admin/login');
+  }
+
   const coldLogin = page.goto('http://127.0.0.1:4182/admin/login');
   await page.getByRole('status').waitFor();
   await coldLogin;
@@ -86,6 +96,10 @@ async (page) => {
   await page.getByRole('button', { name: 'Ingresar' }).click();
   await page.waitForURL('**/admin/productos');
   await assert(page.getByText('admin@candy', { exact: true }).isVisible(), 'AdminLayout did not display authenticated email');
+  for (const path of ['categorias', 'pedidos']) {
+    await page.goto(`http://127.0.0.1:4182/admin/${path}`);
+    await page.waitForURL('**/admin/productos');
+  }
 
   state.meNetworkFailure = true;
   await page.reload();
@@ -165,5 +179,5 @@ async (page) => {
   await page.waitForURL('**/admin/productos');
   await assert(await page.locator('aside').evaluate((node) => getComputedStyle(node).flexDirection === 'row'), '390px sidebar did not collapse');
   assert(errors.length === 0, `console/network errors: ${errors.join(' | ')}`);
-  return { scenarios: 15, consoleErrors: errors.length };
+  return { scenarios: 20, consoleErrors: errors.length };
 }

@@ -26,11 +26,18 @@ console.log('assert-admin-auth-products: start');
 const app = read(src('App.tsx'));
 check('App.tsx has /admin/login route', /path=["'`]\/admin\/login["'`]/.test(app));
 check('App.tsx has /admin/productos route', /path=["'`]\/admin\/productos["'`]/.test(app));
+check('App.tsx has protected /admin/categorias redirect', /path=["'`]\/admin\/categorias["'`][\s\S]*?<RequireAdminAuth>[\s\S]*?<Navigate to=["'`]\/admin\/productos["'`] replace \/>[\s\S]*?<\/RequireAdminAuth>/.test(app));
+check('App.tsx has protected /admin/pedidos redirect', /path=["'`]\/admin\/pedidos["'`][\s\S]*?<RequireAdminAuth>[\s\S]*?<Navigate to=["'`]\/admin\/productos["'`] replace \/>[\s\S]*?<\/RequireAdminAuth>/.test(app));
 check('App.tsx redirects /admin to /admin/productos', /\/admin["'`].*Navigate.*\/admin\/productos/.test(app.replace(/\s+/g, ' ')));
 check('App.tsx imports RequireAdminAuth', /RequireAdminAuth/.test(app));
 check('App.tsx imports AdminLayout', /import.*AdminLayout/.test(app));
 check('App.tsx imports AdminLogin', /import.*AdminLogin/.test(app));
 check('App.tsx has an accessible lazy-route fallback', /<Suspense fallback=\{<p role="status">Cargando…<\/p>\}>/.test(app));
+
+const publicLayout = read(src('layout/Layout.tsx'));
+check('Public Layout imports Outlet', /import\s*\{\s*Outlet\s*\}\s*from\s*["'`]react-router-dom["'`]/.test(publicLayout));
+check('Public Layout renders nested route content between Header and Footer', /<Header\s*\/>[\s\S]*?<main><Outlet\s*\/><\/main>[\s\S]*?<Footer\s*\/>/.test(publicLayout));
+check('Public Layout does not require children', !/children/.test(publicLayout));
 
 // --- AdminLayout ---
 const layoutPath = src('pages/Admin/AdminLayout.tsx');
