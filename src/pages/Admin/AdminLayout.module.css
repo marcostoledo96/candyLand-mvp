@@ -1,0 +1,148 @@
+/* Admin layout shell — sidebar + top bar + content. Light-mode only.
+   Mobile-first: sidebar collapses to a horizontal tab bar under 768px.
+   CandyLand palette. Focus-visible on every interactive element. */
+
+.shell {
+  display: flex;
+  min-height: 100vh;
+  font-family: 'Raleway', sans-serif;
+  color: #4a2c2a;
+  background: #fffafc;
+}
+
+.sidebar {
+  width: 240px;
+  flex-shrink: 0;
+  background: #fff;
+  border-right: 1px solid #f2c7d7;
+  padding: 20px 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+}
+
+.brand {
+  font-family: 'Oswald', sans-serif;
+  text-transform: uppercase;
+  font-size: 1.2rem;
+  letter-spacing: 0.03em;
+  color: #ec6cac;
+  padding: 0 8px;
+}
+
+.nav {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.navLink,
+.navLinkDisabled {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 10px 12px;
+  border-radius: 8px;
+  text-decoration: none;
+  font-size: 0.92rem;
+  color: #4a2c2a;
+  transition: background 0.15s ease;
+}
+
+.navLink:hover {
+  background: #fff0f5;
+}
+
+.navLink:focus-visible {
+  outline: 3px solid #ec6cac;
+  outline-offset: 1px;
+}
+
+.navLinkActive {
+  background: #fce4ec;
+  font-weight: 600;
+}
+
+.navLinkDisabled {
+  color: #b08968;
+  cursor: not-allowed;
+}
+
+.soon {
+  font-size: 0.72rem;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+  color: #b08968;
+  background: #f5e6da;
+  padding: 2px 8px;
+  border-radius: 999px;
+}
+
+.main {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+
+.topbar {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 16px;
+  padding: 12px 24px;
+  background: #fff;
+  border-bottom: 1px solid #f2c7d7;
+  flex-shrink: 0;
+}
+
+.adminEmail {
+  font-size: 0.88rem;
+  color: #7a5553;
+}
+
+.logoutBtn {
+  background: none;
+  border: 1px solid #ec6cac;
+  color: #ec6cac;
+  padding: 7px 16px;
+  border-radius: 6px;
+  cursor: pointer;
+  font-family: 'Oswald', sans-serif;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+  font-size: 0.82rem;
+  transition: background 0.15s ease, color 0.15s ease;
+}
+
+.logoutBtn:hover {
+  background: #ec6cac;
+  color: #fff;
+}
+
+.logoutBtn:focus-visible {
+  outline: 3px solid #4a2c2a;
+  outline-offset: 2px;
+}
+
+.content {
+  flex: 1;
+  padding: 24px;
+  overflow-y: auto;
+}
+
+/* --- Responsive: collapse sidebar to top tab bar under 768px --- */
+@media (max-width: 767px) {
+  .shell { flex-direction: column; }
+  .sidebar {
+    width: 100%; flex-direction: row; align-items: center;
+    gap: 12px; padding: 10px 16px; border-right: none;
+    border-bottom: 1px solid #f2c7d7; overflow-x: auto;
+  }
+  .brand { flex-shrink: 0; font-size: 1rem; }
+  .nav { flex-direction: row; gap: 8px; }
+  .navLink, .navLinkDisabled { white-space: nowrap; padding: 6px 10px; font-size: 0.85rem; }
+  .soon { display: none; }
+  .topbar { padding: 8px 16px; }
+  .content { padding: 16px; }
+}
