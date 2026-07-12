@@ -9,6 +9,11 @@
   background: #fffafc;
 }
 
+.carousel:focus-visible {
+  outline: 3px solid #ec6cac;
+  outline-offset: -3px;
+}
+
 .viewport {
   overflow: hidden;
 }

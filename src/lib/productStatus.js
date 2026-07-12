@@ -23,6 +23,10 @@ export const SLIDES = [
 // Home page shows at most 6 product cards (per 7e.5.5 contract).
 export const MAX_SHOWN = 6;
 
+export function beginProductLoad() {
+  return { error: '', loaded: false };
+}
+
 /**
  * Decide which render state Nuestros Productos should show.
  * @param {{products: unknown[], error: string|null|''|undefined, loaded?: boolean}} input

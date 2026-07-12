@@ -4,7 +4,8 @@
 import React, { useCallback, useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import HeroCarousel, { HeroSlide } from '../../components/HeroCarousel/HeroCarousel';
-import { SLIDES, MAX_SHOWN, decideProductStatus } from '../../lib/productStatus.js';
+import { SLIDES, MAX_SHOWN, beginProductLoad, decideProductStatus } from '../../lib/productStatus.js';
+import { normalizeProductImage } from '../../lib/productImage.js';
 import FeaturedBanners from '../../components/HomeSections/FeaturedBanners';
 import NuestroMundoDulce from '../../components/HomeSections/NuestroMundoDulce';
 import Locations from '../../components/HomeSections/Locations';
@@ -23,7 +24,9 @@ const NuestrosProductos: React.FC = () => {
   const [loaded, setLoaded] = useState(false);
 
   const load = useCallback(async () => {
-    setError('');
+    const pending = beginProductLoad();
+    setError(pending.error);
+    setLoaded(pending.loaded);
     try {
       const all = await fetchProducts();
       setProducts(all);
@@ -82,14 +85,17 @@ const NuestrosProductos: React.FC = () => {
     <section className={styles.productosCandy}>
       <h2 className={styles.tituloProductos}>NUESTROS DULCES</h2>
       <div className={styles.productosFlex}>
-        {shown.map((p) => (
-          <HomeProductCard
-            key={p.id}
-            img={p.image || '/img/golosina1.jpg'}
-            hoverImg={p.image || '/img/golosina1-hover.png'}
-            title={p.title}
-          />
-        ))}
+        {shown.map((p) => {
+          const image = normalizeProductImage(p.image);
+          return (
+            <HomeProductCard
+              key={p.id}
+              img={image || '/img/golosina1.jpg'}
+              hoverImg={image || '/img/golosina1-hover.png'}
+              title={p.title}
+            />
+          );
+        })}
       </div>
     </section>
   );

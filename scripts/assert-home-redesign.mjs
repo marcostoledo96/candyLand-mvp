@@ -76,6 +76,7 @@ if (existsSync(carouselCssPath)) {
   check('HeroCarousel CSS uses translateX', /translateX/.test(css));
   // 1.2 focus-visible ring
   check('HeroCarousel CSS has focus-visible', /focus-visible/.test(css));
+  check('HeroCarousel root has focus-visible outline', /\.carousel:focus-visible\s*\{[^}]*outline:/.test(css));
   // 1.2 prefers-reduced-motion: reduce instant transition
   check('HeroCarousel CSS has prefers-reduced-motion', /prefers-reduced-motion/.test(css));
   // A11y regression guard: no fixed 44px width that clips the Anterior/Siguiente labels

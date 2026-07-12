@@ -19,10 +19,12 @@ import {
   goToIndex,
 } from '../src/components/HeroCarousel/carouselNav.js';
 import {
+  beginProductLoad,
   decideProductStatus,
   SLIDES,
   MAX_SHOWN,
 } from '../src/lib/productStatus.js';
+import { normalizeProductImage } from '../src/lib/productImage.js';
 
 // ---------------------------------------------------------------------------
 // Carousel navigation (production logic shared by HeroCarousel buttons/keys)
@@ -99,6 +101,23 @@ test('decideProductStatus prefers error over empty/loaded', () => {
   );
 });
 
+test('beginProductLoad restores pending state for retries', () => {
+  const pending = beginProductLoad({ error: 'backend down', loaded: true });
+  strictEqual(pending.error, '');
+  strictEqual(pending.loaded, false);
+  strictEqual(decideProductStatus({ products: [], ...pending }), 'loading');
+});
+
+test('normalizeProductImage resolves public filenames and preserves valid URLs', () => {
+  strictEqual(normalizeProductImage('golosina1.jpg'), '/img/golosina1.jpg');
+  strictEqual(normalizeProductImage('/img/golosina1.jpg'), '/img/golosina1.jpg');
+  strictEqual(normalizeProductImage('https://cdn.example.com/candy.jpg'), 'https://cdn.example.com/candy.jpg');
+  strictEqual(normalizeProductImage('http://cdn.example.com/candy.jpg'), 'http://cdn.example.com/candy.jpg');
+  strictEqual(normalizeProductImage('data:image/png;base64,abc'), 'data:image/png;base64,abc');
+  strictEqual(normalizeProductImage(''), '');
+  strictEqual(normalizeProductImage(null), '');
+});
+
 test('SLIDES constant exposes the 3 home slides', () => {
   strictEqual(SLIDES.length, 3);
   for (const s of SLIDES) {
@@ -134,5 +153,16 @@ test('carousel control CSS no longer fixes a 44px width that clips text', async 
   // min-height preserves the 44px touch target without clipping width.
   if (!/min-height:\s*44px/.test(css)) {
     throw new Error('.ctrlBtn must keep a 44px min-height touch target');
+  }
+});
+
+test('carousel root has a visible focus indicator', async () => {
+  const { readFileSync } = await import('node:fs');
+  const { fileURLToPath } = await import('node:url');
+  const { dirname, join } = await import('node:path');
+  const here = dirname(fileURLToPath(import.meta.url));
+  const css = readFileSync(join(here, '..', 'src', 'components', 'HeroCarousel', 'HeroCarousel.module.css'), 'utf8');
+  if (!/\.carousel:focus-visible\s*\{[^}]*outline:/s.test(css)) {
+    throw new Error('.carousel must expose a visible focus outline');
   }
 });
