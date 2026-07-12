@@ -34,6 +34,9 @@ dist-ssr
 # Generated skill registry cache
 .atl/
 
+# Playwright MCP runtime artifacts
+.playwright-mcp/
+
 # SQLite / local DB artifacts (PostgreSQL is the real DB)
 *.db
 *.db-journal

@@ -5,6 +5,7 @@ import CatalogCard from "../../components/Catalog/CatalogCard/CatalogCard";
 import styles from "./CatalogPage.module.css";
 import { useCart } from "../../context/CartContext";
 import { fetchProducts, ApiProduct } from "../../lib/api";
+import { normalizeProductImage } from "../../lib/productImage.js";
 
 const CatalogPage = () => {
   const { addToCart } = useCart();
@@ -89,15 +90,8 @@ const CatalogPage = () => {
         setLoading(true);
         const data: ApiProduct[] = await fetchProducts();
         if (!mounted) return;
-        const normalizeImageUrl = (u?: string | null) => {
-          const s = String(u || '').trim();
-          if (!s) return '/img/dulce1.jpg';
-          if (s.startsWith('/img/')) return s; // mantener ruta pública correcta
-          if (/^https?:/i.test(s)) return s; // URLs externas
-          return `/img/${s.replace(/^\/+/, '')}`; // nombre simple -> carpeta img
-        };
         const mapped: Product[] = data.map((p) => {
-          const baseImg = normalizeImageUrl(p.image);
+          const baseImg = normalizeProductImage(p.image) || '/img/dulce1.jpg';
           const fixed = fixByTitleLocal(p.title, baseImg);
           return {
             id: p.id,
@@ -121,15 +115,8 @@ const CatalogPage = () => {
       const raw = sessionStorage.getItem(CACHE_KEY);
       if (raw) {
         const cached: ApiProduct[] = JSON.parse(raw);
-        const normalizeImageUrl = (u?: string | null) => {
-          const s = String(u || '').trim();
-          if (!s) return '/img/dulce1.jpg';
-          if (s.startsWith('/img/')) return s;
-          if (/^https?:/i.test(s)) return s;
-          return `/img/${s.replace(/^\/+/, '')}`;
-        };
         const mapped: Product[] = cached.map((p) => {
-          const baseImg = normalizeImageUrl(p.image);
+          const baseImg = normalizeProductImage(p.image) || '/img/dulce1.jpg';
           const fixed = fixByTitleLocal(p.title, baseImg);
           return {
             id: p.id,

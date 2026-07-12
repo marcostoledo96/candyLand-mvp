@@ -1,0 +1,45 @@
+/* NuestroMundoDulce: copy block with dulzura-central background. Light-only. */
+
+.section {
+  position: relative;
+  width: 100%;
+  min-height: clamp(340px, 50vw, 520px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background-size: cover;
+  background-position: center;
+  background-repeat: no-repeat;
+  background-color: #fffafc;
+}
+
+.section::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: rgba(255, 250, 252, 0.82);
+}
+
+.content {
+  position: relative;
+  max-width: 760px;
+  padding: clamp(28px, 6vw, 64px);
+  text-align: center;
+  font-family: 'Raleway', sans-serif;
+  color: #4a2c2a;
+}
+
+.title {
+  font-family: 'Oswald', sans-serif;
+  text-transform: uppercase;
+  font-size: clamp(1.6rem, 4vw, 2.4rem);
+  letter-spacing: 0.04em;
+  color: #ec6cac;
+  margin: 0 0 16px;
+}
+
+.body {
+  font-size: 1rem;
+  line-height: 1.6;
+  margin: 0;
+}

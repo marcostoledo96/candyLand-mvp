@@ -1,0 +1,150 @@
+/* HeroCarousel: native React/CSS carousel. Light-mode only. Mobile-first.
+   transform: translateX track, focus-visible ring, prefers-reduced-motion. */
+
+.carousel {
+  position: relative;
+  width: 100%;
+  overflow: hidden;
+  border-radius: 0;
+  background: #fffafc;
+}
+
+.carousel:focus-visible {
+  outline: 3px solid #ec6cac;
+  outline-offset: -3px;
+}
+
+.viewport {
+  overflow: hidden;
+}
+
+.track {
+  display: flex;
+  transition: transform 0.45s cubic-bezier(0.22, 0.61, 0.36, 1);
+  will-change: transform;
+}
+
+.slide {
+  position: relative;
+  flex: 0 0 100%;
+  min-width: 100%;
+}
+
+.slideImg {
+  display: block;
+  width: 100%;
+  height: clamp(280px, 50vw, 560px);
+  object-fit: cover;
+}
+
+.caption {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  padding: clamp(16px, 4vw, 32px);
+  background: linear-gradient(to top, rgba(0, 0, 0, 0.55), transparent);
+  color: #fff;
+  font-family: 'Oswald', sans-serif;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  font-size: clamp(1.1rem, 3vw, 1.8rem);
+}
+
+.controls {
+  position: absolute;
+  top: 50%;
+  left: 0;
+  right: 0;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 0 12px;
+  transform: translateY(-50%);
+  pointer-events: none;
+}
+
+.ctrlBtn {
+  pointer-events: auto;
+  background: rgba(255, 255, 255, 0.85);
+  border: none;
+  border-radius: 999px;
+  min-height: 44px;
+  min-width: 44px;
+  padding: 0 16px;
+  font-size: 1.2rem;
+  cursor: pointer;
+  color: #4a2c2a;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  white-space: nowrap;
+  font-family: 'Oswald', sans-serif;
+  transition: background 0.2s ease, transform 0.2s ease;
+}
+
+.ctrlBtn:hover {
+  background: #fff;
+  transform: scale(1.08);
+}
+
+.ctrlBtn:focus-visible {
+  outline: 3px solid #ec6cac;
+  outline-offset: 2px;
+}
+
+.dots {
+  position: absolute;
+  bottom: 12px;
+  left: 50%;
+  transform: translateX(-50%);
+  display: flex;
+  gap: 8px;
+  z-index: 2;
+}
+
+.dot {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  border: none;
+  background: rgba(255, 255, 255, 0.6);
+  cursor: pointer;
+  padding: 0;
+  transition: background 0.2s ease;
+}
+
+.dot:hover {
+  background: rgba(255, 255, 255, 0.9);
+}
+
+.dot:focus-visible {
+  outline: 3px solid #ec6cac;
+  outline-offset: 2px;
+}
+
+.dotActive {
+  background: #ec6cac;
+}
+
+.liveRegion {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .track {
+    transition: none;
+  }
+
+  .ctrlBtn:hover {
+    transform: none;
+  }
+}
