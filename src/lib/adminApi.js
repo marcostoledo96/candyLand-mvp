@@ -5,6 +5,7 @@
 // Exported as .js so node:test can import directly (matching carouselNav.js).
 
 import { expireAdminSession, AdminAuthError } from './adminAuth.js';
+import { extractApiError } from './adminValidation.js';
 
 const ENV = (import.meta || {}).env || {};
 const API_URL = ENV.VITE_API_URL ?? '';
@@ -49,11 +50,8 @@ async function adminRequest(token, path, init = {}) {
     expireAdminSession();
     throw new AdminAuthError('Sesión expirada');
   }
-  throw new AdminApiError(
-    typeof body?.error === 'string' ? body.error : 'Error del servidor',
-    Array.isArray(body?.errors) ? body.errors : [],
-    res.status,
-  );
+  const error = extractApiError(body, res.status);
+  throw new AdminApiError(error.message, error.summary, res.status);
 }
 
 export async function loginAdmin({ email, password }) {
@@ -82,4 +80,19 @@ export async function deactivateAdminProduct(token, id) {
 
 export async function reactivateAdminProduct(token, id) {
   return adminRequest(token, `/api/admin/products/${id}`, { method: 'PATCH', body: JSON.stringify({ active: true }) });
+}
+
+/** @typedef {{ id:number, title:string, description?:string|null, priceCents:number, imageUrl?:string|null, hoverImageUrl?:string|null, stock:number, active:boolean, categoryId:number, category?:string|null }} AdminProduct */
+/** @typedef {{ id:number, name:string, slug:string, active:boolean }} AdminCategory */
+
+export async function createAdminProduct(token, payload) {
+  return adminRequest(token, '/api/admin/products', { method: 'POST', body: JSON.stringify(payload) });
+}
+
+export async function updateAdminProduct(token, id, payload) {
+  return adminRequest(token, `/api/admin/products/${id}`, { method: 'PATCH', body: JSON.stringify(payload) });
+}
+
+export async function listAdminCategories(token) {
+  return adminRequest(token, '/api/admin/categories');
 }

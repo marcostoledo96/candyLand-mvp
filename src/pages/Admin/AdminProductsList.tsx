@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useState } from 'react';
+import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { getAdminToken, AdminAuthError } from '../../lib/adminAuth.js';
 import {
   listAdminProducts,
@@ -9,6 +9,7 @@ import {
 import type { AdminProduct } from '../../lib/adminApi.js';
 import shared from '../PublicRoutes/PublicRoutes.module.css';
 import styles from './AdminProductsList.module.css';
+import AdminProductForm from './AdminProductForm';
 
 type ListState = 'loading' | 'error' | 'empty' | 'success';
 
@@ -21,9 +22,11 @@ const AdminProductsList: React.FC = () => {
   const [products, setProducts] = useState<AdminProduct[]>([]);
   const [error, setError] = useState('');
   const [mutationStatus, setMutationStatus] = useState('');
+  const [form, setForm] = useState<{ mode: 'create' | 'edit'; product?: AdminProduct } | null>(null);
+  const invoker = useRef<HTMLElement | null>(null);
 
-  const load = useCallback(async () => {
-    setState('loading');
+  const load = useCallback(async (keepVisible = false) => {
+    if (!keepVisible) setState('loading');
     setError('');
     try {
       const token = getAdminToken();
@@ -105,9 +108,8 @@ const AdminProductsList: React.FC = () => {
       <section className={shared.state}>
         <h1 className={shared.stateTitle}>No hay productos</h1>
         <p className={shared.stateText}>Todavía no se creó ningún producto en el catálogo.</p>
-        <span className={styles.soonNote} aria-disabled="true">
-          La creación de productos estará disponible próximamente.
-        </span>
+        <button type="button" data-product-form-invoker="create" className={styles.actionBtn} onClick={(event) => { invoker.current = event.currentTarget; setForm({ mode: 'create' }); }}>Crear producto</button>
+        {form && <AdminProductForm {...form} invoker={invoker.current} invokerSelector={'[data-product-form-invoker="create"]'} onClose={() => setForm(null)} onSaved={() => load(true)} />}
       </section>
     );
   }
@@ -116,9 +118,7 @@ const AdminProductsList: React.FC = () => {
     <section className={shared.page}>
       <div className={styles.header}>
         <h1 className={shared.pageTitle}>Productos</h1>
-        <span className={styles.soonNote} aria-disabled="true" title="Próximamente">
-          Crear producto — Próximamente
-        </span>
+        <button type="button" data-product-form-invoker="create" className={styles.actionBtn} onClick={(event) => { invoker.current = event.currentTarget; setForm({ mode: 'create' }); }}>Crear producto</button>
       </div>
       {mutationStatus && (
         <p className={`${shared.status} ${shared.statusLoading}`} aria-live="polite">
@@ -150,9 +150,7 @@ const AdminProductsList: React.FC = () => {
               )}
             </span>
             <span role="cell" className={styles.actions}>
-              <span className={styles.editDisabled} aria-disabled="true" title="Próximamente">
-                Editar
-              </span>
+              <button type="button" data-product-form-invoker={`edit-${p.id}`} className={styles.actionBtn} onClick={(event) => { invoker.current = event.currentTarget; setForm({ mode: 'edit', product: p }); }}>Editar</button>
               {p.active ? (
                 <button
                   type="button"
@@ -174,6 +172,7 @@ const AdminProductsList: React.FC = () => {
           </div>
         ))}
       </div>
+      {form && <AdminProductForm {...form} invoker={invoker.current} invokerSelector={form.mode === 'edit' ? `[data-product-form-invoker="edit-${form.product?.id}"]` : '[data-product-form-invoker="create"]'} onClose={() => setForm(null)} onSaved={() => load(true)} />}
     </section>
   );
 };
