@@ -51,6 +51,16 @@ test('validateProductPayload creates normalized payload and reports invalid fiel
   ok(invalid.fields.title && invalid.fields.price && invalid.fields.stock && invalid.fields.categoryId && invalid.fields.imageUrl);
 });
 
+test('validateProductPayload rejects blank stock without rejecting zero', () => {
+  const fields = { title: 'Gomitas', price: '12', categoryId: '2', active: true, imageUrl: '', hoverImageUrl: '' };
+  for (const stock of ['', '   ']) {
+    const result = validateProductPayload({ ...fields, stock });
+    strictEqual(result.ok, false);
+    ok(result.fields.stock);
+  }
+  strictEqual(validateProductPayload({ ...fields, stock: '0' }).ok, true);
+});
+
 test('validateProductPayload preserves an unchanged fractional existing price only', () => {
   const fields = { title: 'Gomitas', stock: '0', categoryId: '2', active: true, description: '', imageUrl: '', hoverImageUrl: '' };
   const unchanged = validateProductPayload({ ...fields, price: '12.5' }, 1250);

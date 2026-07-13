@@ -19,7 +19,7 @@ export default function AdminProductForm({ mode, product, invoker, invokerSelect
   const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
   const [saving, setSaving] = useState(false);
 
-  const close = () => { dialog.current?.close(); onClose(); requestAnimationFrame(() => (invoker?.isConnected ? invoker : document.querySelector<HTMLElement>(invokerSelector))?.focus()); };
+  const close = () => { if (saving) return; dialog.current?.close(); onClose(); requestAnimationFrame(() => (invoker?.isConnected ? invoker : document.querySelector<HTMLElement>(invokerSelector))?.focus()); };
   const loadCategories = async () => {
     setCategoryState('loading');
     try {
@@ -76,7 +76,7 @@ export default function AdminProductForm({ mode, product, invoker, invokerSelect
 
   return <dialog ref={dialog} className={styles.dialog} aria-labelledby="product-form-title" onCancel={(event) => { event.preventDefault(); close(); }}>
     <form method="dialog" onSubmit={submit} className={styles.form}>
-      <div className={styles.heading}><h2 id="product-form-title">{mode === 'edit' ? 'Editar producto' : 'Crear producto'}</h2><button type="button" onClick={close}>Cerrar</button></div>
+      <div className={styles.heading}><h2 id="product-form-title">{mode === 'edit' ? 'Editar producto' : 'Crear producto'}</h2><button type="button" onClick={close} disabled={saving}>Cerrar</button></div>
       {(error || summary.length > 0) && <div className={styles.summary} role="alert"><strong>{error}</strong>{summary.map((item) => <div key={item}>{item}</div>)}</div>}
       {labelled('title', 'Título', <input ref={title} name="title" value={fields.title} onChange={change} aria-invalid={!!fieldErrors.title} />)}
       {labelled('description', 'Descripción (opcional)', <textarea name="description" value={fields.description} onChange={change} />)}

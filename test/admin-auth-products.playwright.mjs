@@ -238,6 +238,10 @@ async (page) => {
   const beforePending = state.productMutations;
   await productDialog.getByRole('button', { name: 'Crear', exact: true }).click();
   assert(await productDialog.getByRole('button', { name: 'Guardando…' }).isDisabled(), 'saving state was not announced/disabled');
+  assert(await productDialog.getByRole('button', { name: 'Cerrar' }).isDisabled(), 'header close remained enabled while saving');
+  await page.keyboard.press('Escape');
+  await productDialog.getByRole('button', { name: 'Cerrar' }).click({ force: true });
+  assert(await productDialog.isVisible(), 'pending dialog closed through Escape or header close');
   assert(state.productMutations === beforePending + 1, 'pending submit sent more than one request');
   state.releaseMutation?.();
   await productDialog.waitFor({ state: 'hidden' });

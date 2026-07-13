@@ -47,7 +47,7 @@ export function validateProductPayload(input, originalPriceCents) {
   const price = parsePriceInput(input.price, originalPriceCents);
   if (!price.ok) fields.price = price.error;
   const stock = Number(input.stock);
-  if (!Number.isInteger(stock) || stock < 0) fields.stock = 'El stock debe ser un entero igual o mayor a cero.';
+  if (String(input.stock ?? '').trim() === '' || !Number.isInteger(stock) || stock < 0) fields.stock = 'El stock debe ser un entero igual o mayor a cero.';
   const categoryId = Number(input.categoryId);
   if (!Number.isInteger(categoryId) || categoryId <= 0) fields.categoryId = 'Elegí una categoría válida.';
   if (typeof input.active !== 'boolean') fields.active = 'El estado debe ser válido.';
