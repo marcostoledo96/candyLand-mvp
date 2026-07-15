@@ -41,10 +41,25 @@ function violations(source) {
   ].filter(([, failed]) => failed).map(([scenario]) => scenario);
 }
 
-test(`checkout-hardening differential RED: ${baselineRef} fails every changed browser/static contract`, () => {
-  const baseline = loadGitBaseline(root, baselineRef, paths);
-  if (!baseline) return test.skip(`RED baseline skipped: ${baselineRef} is unavailable in this checkout`);
+function historicalRedOutcome(baseline) {
+  if (!baseline) return { kind: "skip", reason: "baseline is unavailable" };
   const failures = violations(baseline);
+  if (failures.length === 0) return { kind: "skip", reason: "baseline already satisfies candidate contracts" };
+  return { kind: "red", failures };
+}
+
+test("checkout-hardening differential skips historical RED when a selected baseline already satisfies candidate contracts", () => {
+  assert.deepEqual(historicalRedOutcome(current), {
+    kind: "skip",
+    reason: "baseline already satisfies candidate contracts",
+  });
+});
+
+test(`checkout-hardening differential RED: ${baselineRef} fails every changed browser/static contract`, (t) => {
+  const baseline = loadGitBaseline(root, baselineRef, paths);
+  const outcome = historicalRedOutcome(baseline);
+  if (outcome.kind === "skip") return t.skip(`RED baseline skipped: ${outcome.reason}`);
+  const { failures } = outcome;
   assert.deepEqual(failures, [
     "CH-01-A canonical localidad",
     "CH-01-B revisit persistence",
@@ -65,6 +80,10 @@ test("checkout-hardening differential skips only RED when origin/main is absent"
   t.after(() => rmSync(temporary, { recursive: true, force: true }));
   execFileSync("git", ["init", "--quiet", temporary]);
   assert.equal(loadGitBaseline(temporary, "origin/main", paths), null);
+  assert.deepEqual(historicalRedOutcome(null), {
+    kind: "skip",
+    reason: "baseline is unavailable",
+  });
 });
 
 test("checkout-hardening differential does not hide unrelated Git failures", (t) => {

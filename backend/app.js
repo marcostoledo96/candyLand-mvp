@@ -48,19 +48,6 @@ app.get('/api/db/health', async (_req, res) => {
   }
 });
 
-// Endpoint de diagnóstico para revisar variables de entorno y conectividad rápida
-app.get('/api/env-check', async (_req, res) => {
-  const dbUrl = process.env.DATABASE_URL;
-  const summary = { hasDatabaseUrl: !!dbUrl, databaseUrlPreview: dbUrl ? dbUrl.slice(0, 50) + '...' : null };
-  try {
-    await prisma.$queryRaw`SELECT 1`;
-    return res.json({ ok: true, prisma: 'reachable', ...summary });
-  } catch (err) {
-    console.error('Env check DB error:', err);
-    return res.status(500).json({ ok: false, prisma: 'error', error: String(err.message || err), ...summary });
-  }
-});
-
 // Helpers
 async function getOrCreateCart(cartId) {
   if (cartId) {
@@ -73,6 +60,12 @@ async function getOrCreateCart(cartId) {
   const newId = randomUUID();
   const cart = await prisma.cart.create({ data: { id: newId } });
   return cart;
+}
+
+function paymentOptions() {
+  const bank = Object.fromEntries(['alias', 'cbu', 'titular'].map((key) => [key, process.env[`BANK_${key.toUpperCase()}`]?.trim()]));
+  const valid = Object.values(bank).every(Boolean) && !/^0+$/.test(bank.cbu);
+  return { methods: valid ? ['CASH', 'TRANSFER'] : ['CASH'], bank: valid ? bank : null };
 }
 
 async function buildCartResponse(cartId) {
@@ -143,27 +136,24 @@ app.post('/api/carrito', async (req, res) => {
   }
 });
 
+app.get('/api/payment-method', (_req, res) => res.json(paymentOptions()));
+
 // Selección de método de pago
 app.post('/api/payment-method', async (req, res) => {
   try {
     const cartId = typeof req.query.cartId === 'string' ? req.query.cartId : undefined;
     const { method } = req.body || {};
-    const cart = await getOrCreateCart(cartId);
     const normalized = String(method || '').toLowerCase();
     let pm;
     if (normalized === 'efectivo') pm = 'CASH';
     else if (normalized === 'transferencia') pm = 'TRANSFER';
     else return res.status(400).json({ error: 'Método inválido. Use "efectivo" o "transferencia".' });
+    const options = paymentOptions();
+    if (!options.methods.includes(pm)) return res.status(400).json({ error: 'Transferencia no disponible.' });
+    const cart = await getOrCreateCart(cartId);
 
     await prisma.cart.update({ where: { id: cart.id }, data: { paymentMethod: pm } });
-
-    const bank = {
-      alias: process.env.BANK_ALIAS || 'candyland.tienda.mp',
-      cbu: process.env.BANK_CBU || '0000003100000000000000',
-      titular: process.env.BANK_TITULAR || 'CandyLand',
-    };
-
-    res.json({ cartId: cart.id, method: normalized, bank: pm === 'TRANSFER' ? bank : null });
+    res.json({ cartId: cart.id, method: normalized, bank: pm === 'TRANSFER' ? options.bank : null });
   } catch (err) {
     console.error('Error guardando método de pago:', err);
     res.status(500).json({ error: 'Internal Server Error' });

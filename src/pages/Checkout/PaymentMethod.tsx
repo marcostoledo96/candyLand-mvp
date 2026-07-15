@@ -1,7 +1,7 @@
 import React, { useEffect, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import styles from "./Checkout.module.css";
-import { CheckoutApiError, PaymentMethodChoice, postPaymentMethod } from "../../lib/api";
+import { CheckoutApiError, getPaymentMethods, PaymentMethodChoice, PaymentMethodCode, postPaymentMethod } from "../../lib/api";
 import { buildPaymentPayload, classifyCheckoutFailure } from "../../lib/checkout.js";
 
 const PaymentMethod = () => {
@@ -12,12 +12,23 @@ const PaymentMethod = () => {
   });
   const [loading, setLoading] = useState(false);
   const [message, setMessage] = useState("");
+  const [methods, setMethods] = useState<PaymentMethodCode[]>(["CASH"]);
 
   useEffect(() => {
     try {
       if (!localStorage.getItem("checkoutData")) navigate("/checkout/direccion", { replace: true });
     } catch { navigate("/checkout/direccion", { replace: true }); }
   }, [navigate]);
+
+  useEffect(() => {
+    let current = true;
+    getPaymentMethods().then(({ methods }) => {
+      if (!current) return;
+      setMethods(methods);
+      if (!methods.includes("TRANSFER")) setMethod("efectivo");
+    }).catch(() => {});
+    return () => { current = false; };
+  }, []);
 
   const showError = (nextMessage: string) => {
     setMessage(nextMessage);
@@ -55,10 +66,10 @@ const PaymentMethod = () => {
           <input type="radio" name="payment" checked={method === "efectivo"} onChange={() => setMethod("efectivo")} />
           <span className={styles.optionTitle}>Efectivo</span><span className={styles.optionDesc}>Pagás al recibir tu pedido.</span>
         </label>
-        <label className={`${styles.optionCard} ${method === "transferencia" ? styles.selected : ""}`}>
+        {methods.includes("TRANSFER") && <label className={`${styles.optionCard} ${method === "transferencia" ? styles.selected : ""}`}>
           <input type="radio" name="payment" checked={method === "transferencia"} onChange={() => setMethod("transferencia")} />
           <span className={styles.optionTitle}>Transferencia</span><span className={styles.optionDesc}>Verás los datos bancarios provistos por el checkout antes de confirmar.</span>
-        </label>
+        </label>}
       </fieldset>
       {method === "efectivo" ? <p className={styles.instruction}>Pagá en efectivo al recibir tu pedido.</p> : <p className={styles.instruction}>Guardaremos tu elección y te mostraremos los datos de transferencia en la confirmación.</p>}
       <button type="button" onClick={handleContinue} disabled={loading}>{loading ? "Guardando…" : "Continuar"}</button>

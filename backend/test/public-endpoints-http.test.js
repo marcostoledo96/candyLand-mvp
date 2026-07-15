@@ -13,6 +13,7 @@
 //  - Oversized payload -> 400 without persistence
 
 const assert = require('assert');
+const { randomUUID } = require('crypto');
 const http = require('http');
 const Module = require('module');
 const path = require('path');
@@ -286,6 +287,22 @@ async function run() {
     assert.equal(r.status, 400);
     assert.equal(contactMessages.length, before, 'MUST NOT persist oversized payload');
     assert.ok(r.body.error);
+  });
+
+  console.log('\nGET /api/payment-method:');
+  await test('offers CASH only without valid bank settings and TRANSFER with test-only settings', async () => {
+    const saved = Object.fromEntries(['BANK_ALIAS', 'BANK_CBU', 'BANK_TITULAR'].map((key) => [key, process.env[key]]));
+    for (const key of Object.keys(saved)) delete process.env[key];
+    let r = await request({ method: 'GET', path: '/api/payment-method' });
+    assert.deepEqual(r.body, { methods: ['CASH'], bank: null });
+    Object.assign(process.env, { BANK_ALIAS: randomUUID(), BANK_CBU: '0'.repeat(22), BANK_TITULAR: randomUUID() });
+    r = await request({ method: 'GET', path: '/api/payment-method' });
+    assert.deepEqual(r.body, { methods: ['CASH'], bank: null });
+    const bank = { alias: randomUUID(), cbu: randomUUID().replace(/[a-f-]/g, ''), titular: randomUUID() };
+    Object.assign(process.env, { BANK_ALIAS: bank.alias, BANK_CBU: bank.cbu, BANK_TITULAR: bank.titular });
+    r = await request({ method: 'GET', path: '/api/payment-method' });
+    assert.deepEqual(r.body, { methods: ['CASH', 'TRANSFER'], bank });
+    for (const [key, value] of Object.entries(saved)) value === undefined ? delete process.env[key] : process.env[key] = value;
   });
 
   server.close();

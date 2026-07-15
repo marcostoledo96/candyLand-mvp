@@ -14,6 +14,7 @@ const checkout = checkoutFiles.map(read).join("\n");
 const api = read("src/lib/api.ts");
 const cartContext = read("src/context/CartContext.tsx");
 const app = read("src/App.tsx");
+const backend = read("backend/app.js");
 const pkg = JSON.parse(read("package.json"));
 
 assert.equal(/wa\.me|whatsapp|5491133190247/i.test(checkout), false, "checkout must not expose a WhatsApp path");
@@ -26,6 +27,9 @@ assert.match(app, /path="\/checkout\/pago"/);
 assert.match(app, /path="\/checkout\/confirmacion"/);
 assert.match(api, /\/api\/checkout\$\{q\}/);
 assert.match(api, /\/api\/payment-method\$\{q\}/);
+assert.match(api, /getPaymentMethods/);
+assert.match(checkout, /methods\.includes\("TRANSFER"\)/);
+assert.equal(/candyland\.tienda\.mp|0000003100000000000000/.test(backend), false, "backend must not expose placeholder bank details");
 assert.match(api, /\/api\/orders\/confirm\$\{q\}/);
 assert.match(api, /"Idempotency-Key": confirmationKey/);
 assert.match(checkout, /checkoutConfirmation/);

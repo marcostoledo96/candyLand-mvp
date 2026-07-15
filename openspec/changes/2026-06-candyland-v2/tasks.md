@@ -867,3 +867,76 @@ Chain strategy: not-applicable
 | Runtime harness | Clean `vite preview` ran the unchanged matrix exactly once across `auth-products` 14, `categories` 15, `product-form` 19, `orders-foundation` 8, and `orders-races-failures` 8 = **64/64 PASS** with zero harness console/network errors. Receipt identity SHA-256 `4ef14027f1b9a5f56d70b4e9f623895cf227af47b1db10e09afa0ac909b904ef`, recomputed by `npm run assert:admin-runtime-receipt` from recursive key-sorted compact JSON excluding `identitySha256`; runner SHA-256 `62584425d54999ad5f53fb68b6950883290a514779491d5f650bcaf4d458240c`. |
 | Safe backend regression | All 10 `backend/test/*.test.js` with dotenv disabled and a dummy `DATABASE_URL` → PASS; no DB connection. |
 | Rollback boundary | Revert only the batch guards in `test/admin-auth-products.playwright.mjs`, `test/admin-runtime-batches.test.mjs`, the root `package.json` test entry, and `runtime-admin-orders-receipt.json`; product/API/backend contracts stay unchanged. |
+
+## Ops. Production Deploy QA (PD-01..PD-08)
+
+## Review Workload Forecast
+
+| Field | Value |
+|---|---|
+| Estimated changed lines | 1,200–1,800; hard cap 3,000 |
+| 400-line budget risk | High |
+| Chained PRs recommended | No — user requires one PR |
+| Suggested split | Single PR; repository first, provider later |
+| Delivery strategy | single-pr |
+| Chain strategy | size-exception (single-PR cap, never above 3,000) |
+
+Decision needed before apply: No
+Chained PRs recommended: No
+Chain strategy: size-exception
+400-line budget risk: High
+
+Repository-only apply needs no further decision. Provider actions, migration, writes, seed, linking, and rollback execution require later approval/access.
+
+### Suggested Work Units
+
+| Unit | Goal | Likely PR | Focused test command | Runtime harness | Rollback boundary |
+|---|---|---|---|---|---|
+| 1 | PD-01, Railway/Vercel contracts | PR 1 | `node --test backend/test/env-check-removed.test.js test/production-deploy-qa.test.mjs` | N/A: static/local contracts | Revert `backend/app.js`, `railway.json`, config tests/scripts |
+| 2 | Public smoke and evidence schema | PR 1 | `node --test test/production-deploy-qa.test.mjs` | `node scripts/smoke-production.mjs <public-api-base>`; GET-only | Revert smoke script and package entries |
+| 3 | Runbook and QA reconciliation | PR 1 | `npm run lint && npm run build && npm test` | N/A: documentation/ledger only | Revert documented runbook/OpenSpec slice |
+
+## Phase 1: RED contracts and release configuration
+
+- [x] 1.1 **RED PD-01:** add `backend/test/env-check-removed.test.js` proving unauthenticated `/api/env-check` is 404, makes no DB call, and leaks no sentinel URL, stack, provider, or derived environment value.
+- [x] 1.2 **GREEN PD-01:** remove `/api/env-check` from `backend/app.js`; retain safe health endpoints and generic error responses.
+- [x] 1.3 **RED PD-02/04:** add `test/production-deploy-qa.test.mjs` assertions for exact Railway release and frontend-only Vercel/package behavior.
+- [x] 1.4 **GREEN PD-02/04:** create root `railway.json` with `npm ci --include=dev && npm run prisma:generate`, `npx prisma migrate deploy`, `npm start`; add focused package scripts without dependencies.
+
+## Phase 2: Smoke, evidence, and migration gates
+
+- [x] 2.1 **RED PD-05:** test fake-fetch execution enforces exactly four public `GET`s (`/api/health`, `/api/db/health`, `/api/productos`, `/api/categories`) with no auth/body/cookie/query and blocks failed promotion without writes.
+- [x] 2.2 **GREEN PD-05:** create dependency-free `scripts/smoke-production.mjs` accepting one HTTPS base URL and emitting deterministic redacted evidence fields; never capture payloads/headers/logs.
+- [x] 2.3 **RED/GREEN PD-03/07:** test idempotent forward migration ordering, safe forward-fix policy, and rollback references; production migration remains blocked.
+
+## Phase 3: Documentation and verification
+
+- [x] 3.1 Update `docs/DEPLOY_RAILWAY_VERCEL.md` and `README.md` with runbook, variable names only, approval tiers, smoke, migration/seed policy, and backend/frontend/checkout/email rollback.
+- [x] 3.2 Reconcile stale parent deploy items; trace PD-01..08 to files/tests/evidence and record skipped provider, migration, seed, write, and rollback actions.
+- [x] 3.3 Run local regression: backend tests, `npm test`, lint, build, Prisma validate/generate, and config assertions; public smoke may run with a supplied URL.
+- [ ] 3.4 Authenticated provider inspection, migration deploy, seed, checkout/admin writes, linking/config mutation, and destructive rollback QA are explicitly **BLOCKED pending user approval/access**.
+- [x] 3.5 Run repository-only `sdd-verify`: PASS WITH WARNINGS; 10/10 repository-verifiable scenarios pass, while 6/6 production-only scenarios remain blocked/pending.
+- [x] 3.6 Archive this repository slice only; keep the parent open until PD-01..PD-07 production evidence and PD-08 reconciliation are complete.
+
+Threat-matrix rows are explicitly N/A; no extra threat RED tests.
+
+### Repository apply evidence — 2026-07-15
+
+| PD | Repository evidence | Production state |
+|---|---|---|
+| PD-01 | `backend/test/env-check-removed.test.js` proves 404, zero stubbed DB calls, and no sentinel/stack/provider leak. | Public production endpoint was not altered directly. |
+| PD-02 | Root `railway.json` is tested for exact build, pre-deploy, start, and health commands; provider config-path selection remains external. | BLOCKED: provider config/deploy approval required. |
+| PD-03 | Forward migration is tested as additive/non-destructive; docs require migration before start and a forward fix for unsafe reversals. | BLOCKED: migration execution approval required. |
+| PD-04 | `vercel.json` and `.vercelignore` assertions prove frontend-only build/output, no `/api` rewrite, and no DB command. | BLOCKED: provider inspection/config mutation approval required. |
+| PD-05 | Fake-fetch tests prove exactly four GETs/no retry or write; public smoke returned 200 for all four paths with redacted evidence. | Public read-only QA complete for this run; no promotion claim. |
+| PD-06 | Runbook separates repository-local, public read-only, authenticated read-only, and mutation tiers. | BLOCKED: checkout/admin write QA, linking, and CLI installation require approval. |
+| PD-07 | Runbook records backend/frontend/checkout/email rollback boundaries and forward-fix migration policy. | BLOCKED: rollback execution has not been authorized or tested. |
+| PD-08 | README, backend README, deploy guide, index, historical audit label, spec, tasks, and Engram apply-progress reconcile this repository slice. | Parent remains open pending PD-01..PD-07 production evidence and verify/archive. |
+
+**Checks:** focused PD tests pass 7/7; public smoke pass 4/4; lint/build pass. Backend stubbed regressions pass. Corrective Strict TDD now makes historical checkout RED conditional: when `origin/main` already satisfies all candidate contracts it skips with the deterministic reason `baseline already satisfies candidate contracts`; candidate GREEN always runs. Root `npm test` now reports 80 pass, 1 expected historical-RED skip, and 0 failures. Provider mutation, migration, seed, write QA, CLI installation/linking, and rollback execution remain intentionally unperformed.
+
+### Repository verify evidence — 2026-07-15
+
+- Report: `verify-production-deploy-qa.md`; verdict PASS WITH WARNINGS for the repository slice only.
+- Current production smoke is pre-merge evidence: four public GETs passed; candidate diagnostic removal, bank correction, migration, provider variables, and write QA are not claimed in production.
+- Exact post-verify surface and projected 30-line archive total are recorded in the report; both remain below the 3,000 cap.

@@ -181,13 +181,20 @@ export async function postCheckout(
 
 // Método de pago
 export type PaymentMethodChoice = 'efectivo' | 'transferencia';
+export type PaymentMethodCode = 'CASH' | 'TRANSFER';
+export interface BankDetails { alias: string; cbu: string; titular: string; }
+export interface PaymentMethodOptions { methods: PaymentMethodCode[]; bank: BankDetails | null; }
+
+export function getPaymentMethods(): Promise<PaymentMethodOptions> {
+  return checkoutRequest('/api/payment-method', { method: 'GET' });
+}
 
 export async function postPaymentMethod(
   method: PaymentMethodChoice,
   cartId?: string | null
 ) {
   const q = cartId ? `?cartId=${encodeURIComponent(cartId)}` : "";
-  return checkoutRequest<{ cartId?: string; method: PaymentMethodChoice; bank?: { alias: string; cbu: string; titular: string } | null }>(`/api/payment-method${q}`, {
+  return checkoutRequest<{ cartId?: string; method: PaymentMethodChoice; bank?: BankDetails | null }>(`/api/payment-method${q}`, {
     method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ method }),
   });
 }

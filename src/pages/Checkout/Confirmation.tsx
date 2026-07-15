@@ -99,7 +99,7 @@ const Confirmation = () => {
           <h3>Resumen</h3>
           <ul>{order.items.map((item) => <li key={item.productId}>x{item.quantity} — ${Math.round(item.subtotalCents / 100)}</li>)}</ul>
           <p><b>Total:</b> ${Math.round(order.totalCents / 100)}</p>
-          {order.paymentMethod === "efectivo" ? <p className={styles.instruction}>Pagá en efectivo al recibir tu pedido.</p> : bank ? <div className={styles.bankBox}><h3>Datos para transferencia</h3><p><b>Alias:</b> {bank.alias}</p><p><b>CBU:</b> {bank.cbu}</p><p><b>Titular:</b> {bank.titular}</p></div> : <p className={styles.instruction}>Tu pedido quedó registrado para transferencia.</p>}
+          {order.paymentMethod === "efectivo" ? <p className={styles.instruction}>Pagá en efectivo al recibir tu pedido.</p> : bank && <div className={styles.bankBox}><h3>Datos para transferencia</h3><p><b>Alias:</b> {bank.alias}</p><p><b>CBU:</b> {bank.cbu}</p><p><b>Titular:</b> {bank.titular}</p></div>}
         </>
       ) : hasCart ? (
         <p>Revisá los datos y confirmá cuando estés listo.</p>

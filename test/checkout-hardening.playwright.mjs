@@ -8,7 +8,7 @@ async (page) => {
     orderId: 1, orderNumber: "CL-100", totalCents: 1250, paymentMethod: "transferencia", items: [{ productId: 2, quantity: 1, priceCents: 1250, subtotalCents: 1250 }],
     customer: { id: 1, nombre: "Ana", telefono: "11", direccion: "Calle 1", localidad: "CABA", provincia: "BA", codigoPostal: "1000" },
   };
-  const state = { checkoutStatus: 200, paymentStatus: 200, confirmStatus: 200, confirmCalls: 0, cartMutationCalls: 0, delayConfirm: false, releaseConfirm: null };
+  const state = { checkoutStatus: 200, paymentStatus: 200, paymentMethods: { methods: ["CASH", "TRANSFER"], bank: { alias: "candy.alias", cbu: "123", titular: "CandyLand" } }, confirmStatus: 200, confirmCalls: 0, cartMutationCalls: 0, delayConfirm: false, releaseConfirm: null };
 
   await page.unroute("**/api/**");
   page.on("console", (message) => {
@@ -27,7 +27,7 @@ async (page) => {
       return json(route, { cartId: "cart/a b", items: [{ id: 1, productId: 2, title: "Gomitas", priceCents: 1250, quantity: 1, subtotalCents: 1250 }], totalItems: 1, totalCents: 1250 });
     }
     if (path.startsWith("/api/checkout")) return json(route, state.checkoutStatus === 200 ? { cartId: "cart/a b" } : state.checkoutStatus === 400 ? { error: "Campos requeridos faltantes", missing: ["telefono"] } : { error: "Carrito no encontrado" }, state.checkoutStatus);
-    if (path.startsWith("/api/payment-method")) return json(route, state.paymentStatus === 200 ? { cartId: "cart/a b", method: "transferencia", bank: { alias: "candy.alias", cbu: "123", titular: "CandyLand" } } : { error: "Carrito no encontrado" }, state.paymentStatus);
+    if (path.startsWith("/api/payment-method")) return json(route, request.method() === "GET" ? state.paymentMethods : state.paymentStatus === 200 ? { cartId: "cart/a b", method: "transferencia", bank: state.paymentMethods.bank } : { error: "Carrito no encontrado" }, state.paymentStatus);
     if (path.startsWith("/api/orders/confirm")) {
       state.confirmCalls += 1;
       if (state.delayConfirm) await new Promise((resolve) => { state.releaseConfirm = resolve; });
@@ -60,12 +60,20 @@ async (page) => {
   await page.evaluate(() => localStorage.setItem("paymentMethod", "efectivo"));
   await page.goto("http://127.0.0.1:5173/checkout/pago");
   assert((await page.locator("main section").textContent()).includes("Pagá en efectivo al recibir tu pedido."), "CH-02 cash instruction");
+  await page.getByLabel("Transferencia").waitFor();
   await page.getByLabel("Transferencia").check();
   assert((await page.locator("main section").textContent()).includes("Verás los datos bancarios provistos por el checkout antes de confirmar."), "CH-02 transfer instruction");
   await page.getByRole("button", { name: "Continuar" }).click();
   await page.waitForURL("**/checkout/confirmacion");
   assert(requests.some((request) => request.path === "/api/payment-method?cartId=cart%2Fa%20b" && request.body === '{"method":"transferencia"}'), "CH-04 payment contract");
   assert((await page.evaluate(() => localStorage.getItem("checkoutBank"))).includes("candy.alias"), "CH-02 endpoint bank details retained");
+  state.paymentMethods = { methods: ["CASH"], bank: null };
+  const availabilityRequest = page.waitForRequest((request) => request.url().includes("/api/payment-method") && request.method() === "GET");
+  await go("/checkout/pago", { cartId: "cart/a b", checkoutData: storedAddress, paymentMethod: "transferencia" });
+  await availabilityRequest;
+  await page.evaluate(() => new Promise(requestAnimationFrame));
+  assert(await page.getByLabel("Transferencia").count() === 0, "CH-02 cash-only hides transfer safely");
+  state.paymentMethods = { methods: ["CASH", "TRANSFER"], bank: { alias: "candy.alias", cbu: "123", titular: "CandyLand" } };
 
   // CH-03: client validation focuses an inline alert and sends no request.
   await go("/checkout/direccion", { cartId: "cart/a b" });

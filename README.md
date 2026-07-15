@@ -12,15 +12,16 @@ CandyLand es un e-commerce full stack para golosinas y snacks premium. El objeti
 ## 🧱 Stack principal
 - **Frontend:** React 19 + Vite + TypeScript, React Router y estado global en `CartContext`. Las llamadas a la API se encapsulan en `src/lib/api.ts` usando `VITE_API_URL`.
 - **Backend:** Express + Prisma sobre PostgreSQL. La v2 apunta a Railway como backend long-running + PostgreSQL.
-- **Infraestructura:** Vercel debe quedar como frontend-only (`dist/`). La superficie serverless `/api` todavía existe como legado mientras se completa la separación.
+- **Infraestructura:** Vercel is frontend-only (`dist/`); Railway runs the long-lived Express API and Railway PostgreSQL.
 
 > Nota histórica: una versión anterior desplegaba el backend como función serverless en Vercel (`api/*`). Esa superficie está **deprecada para v2**; la API oficial debe vivir en Railway.
 
 ## 🔩 Arquitectura en breve
 - SPA alojada en `src/` con componentes desacoplados (`components/`, `pages/`, `layout/`) para Home, Catálogo, Carrito y Checkout.
 - Backend en `backend/` con `server.js` (modo long-running) y `app.js` (app Express exportable). Para Railway debe escuchar `process.env.PORT` en host `0.0.0.0`.
-- `api/*` existe como bridge legacy y NO debe usarse como API oficial en v2; está marcado para revisión/deprecación.
-- `vercel.json` se usa para el build del frontend y el fallback SPA. La rewrite `/api` todavía existe como compatibilidad legacy y está bajo revisión.
+- `api/*` remains a deprecated rollback artifact and is excluded from Vercel deployment; it is not the official API.
+- `vercel.json` builds only the frontend and keeps an SPA fallback with no `/api` rewrite.
+- Root `railway.json` versions the backend release order: Prisma generate during build, approved `prisma migrate deploy` before start, then `npm start` and `/api/health`.
 
 ## 📦 Scripts útiles (raíz)
 - `npm run lint` · pasa ESLint (regla bloqueante).
@@ -42,11 +43,10 @@ CandyLand es un e-commerce full stack para golosinas y snacks premium. El objeti
    - En desarrollo, Vite proxea `/api` al backend local (`http://127.0.0.1:5050`); en producción el frontend llama a `VITE_API_URL` (Railway).
 
 ## ☁️ Deploy
-- **Vercel (frontend):** ejecuta sólo `npm run build` → `dist/`. No debe correr `prisma db push`, `prisma migrate deploy` ni `seed`. La rewrite `/api` legacy se eliminará en la fase de separación Railway/Vercel.
-  - Variable requerida: `VITE_API_URL` (URL pública del backend en Railway).
-- **Railway (backend + PostgreSQL):** `backend/` como root directory. En la fase de separación debe escuchar `process.env.PORT` y host `0.0.0.0`.
-  - Migraciones: `npx prisma migrate deploy` (manual o como pre-deploy en Railway).
-  - Seed: manual y seguro (no automatizarlo en cada deploy).
+- **Vercel (frontend):** runs only `npm run build` → `dist/`; no migrations, seed, database push, or API functions. Required variable name: `VITE_API_URL`.
+- **Railway (backend + PostgreSQL):** uses Root Directory `backend` and the root Config File `/railway.json`. The release runs build → approved `npx prisma migrate deploy` → `npm start`; seed remains manual.
+- **Public read-only smoke:** `npm run smoke:production` checks only health, DB health, products, and categories, emitting redacted JSON evidence.
+- **Approval gate:** provider configuration, deployment, migration, seed, checkout/admin write QA, CLI installation/linking, and rollback execution are not performed by repository checks and require separate authorization.
 - Ver `docs/DEPLOY_RAILWAY_VERCEL.md` para el checklist completo de deploy desde cero.
 
 ## 🔐 Secretos y variables de entorno
