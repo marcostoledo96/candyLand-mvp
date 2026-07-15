@@ -77,6 +77,8 @@ model Customer {
 model Order {
   id          Int           @id @default(autoincrement())
   orderNumber String        @unique
+  confirmationKey String?   @unique
+  confirmationCartId String?
   customerId  Int
   customer    Customer      @relation(fields: [customerId], references: [id])
   items       OrderItem[]

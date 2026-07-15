@@ -133,25 +133,50 @@ export interface CheckoutPayload {
   codigoPostal: string;
 }
 
+export type CheckoutFailure =
+  | { kind: 'http'; status: number; body: Record<string, unknown> }
+  | { kind: 'pre-dispatch' }
+  | { kind: 'transport' }
+  | { kind: 'invalid-success' };
+
+export class CheckoutApiError extends Error {
+  failure: CheckoutFailure;
+
+  constructor(failure: CheckoutFailure) {
+    super(failure.kind === 'transport' ? 'Checkout transport failed' : 'Checkout request failed');
+    this.failure = failure;
+  }
+}
+
+async function checkoutRequest<T>(path: string, init: RequestInit, retryTransport = true, invalidSuccessIsAmbiguous = false): Promise<T> {
+  try {
+    const res = retryTransport
+      ? await fetchWithFallback(`${API_URL}${path}`, init)
+      : await fetch(`${API_URL}${path}`, init);
+    if (!res.ok) {
+      const body = await res.json().catch(async () => ({ error: await res.text().catch(() => '') }));
+      throw new CheckoutApiError({ kind: 'http', status: res.status, body });
+    }
+    try {
+      return await res.json();
+    } catch {
+      if (invalidSuccessIsAmbiguous) throw new CheckoutApiError({ kind: 'invalid-success' });
+      throw new CheckoutApiError({ kind: 'transport' });
+    }
+  } catch (error) {
+    if (error instanceof CheckoutApiError) throw error;
+    throw new CheckoutApiError({ kind: 'transport' });
+  }
+}
+
 export async function postCheckout(
   payload: CheckoutPayload,
   cartId?: string | null
 ) {
-  try {
-    const q = cartId ? `?cartId=${encodeURIComponent(cartId)}` : "";
-    const res = await fetchWithFallback(`${API_URL}/api/checkout${q}`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(payload),
-    });
-    if (!res.ok) {
-      const data = await res.json().catch(async () => ({ error: await res.text().catch(() => "") }));
-      throw data;
-    }
-    return res.json();
-  } catch (err) {
-    throw { error: `No se pudo conectar al backend (${API_URL}). Verificá que el servidor esté corriendo.` };
-  }
+  const q = cartId ? `?cartId=${encodeURIComponent(cartId)}` : "";
+  return checkoutRequest<{ cartId?: string }>(`/api/checkout${q}`, {
+    method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(payload),
+  });
 }
 
 // Método de pago
@@ -161,21 +186,10 @@ export async function postPaymentMethod(
   method: PaymentMethodChoice,
   cartId?: string | null
 ) {
-  try {
-    const q = cartId ? `?cartId=${encodeURIComponent(cartId)}` : "";
-    const res = await fetchWithFallback(`${API_URL}/api/payment-method${q}`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ method }),
-    });
-    if (!res.ok) {
-      const data = await res.json().catch(async () => ({ error: await res.text().catch(() => "") }));
-      throw data;
-    }
-    return res.json();
-  } catch (err) {
-    throw { error: `No se pudo conectar al backend (${API_URL}). Verificá que el servidor esté corriendo.` };
-  }
+  const q = cartId ? `?cartId=${encodeURIComponent(cartId)}` : "";
+  return checkoutRequest<{ cartId?: string; method: PaymentMethodChoice; bank?: { alias: string; cbu: string; titular: string } | null }>(`/api/payment-method${q}`, {
+    method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ method }),
+  });
 }
 
 // Confirmar orden
@@ -203,18 +217,18 @@ export interface ConfirmOrderResponse {
   };
 }
 
-export async function postConfirmOrder(cartId?: string | null): Promise<ConfirmOrderResponse> {
-  try {
-    const q = cartId ? `?cartId=${encodeURIComponent(cartId)}` : "";
-  const res = await fetchWithFallback(`${API_URL}/api/orders/confirm${q}`, { method: 'POST' });
-    if (!res.ok) {
-      const data = await res.json().catch(async () => ({ error: await res.text().catch(() => "") }));
-      throw data;
-    }
-    return res.json();
-  } catch (err) {
-    throw { error: `No se pudo conectar al backend (${API_URL}). Verificá que el servidor esté corriendo.` };
-  }
+export function postConfirmOrder(cartId?: string | null, confirmationKey?: string): Promise<ConfirmOrderResponse> {
+  const q = cartId ? `?cartId=${encodeURIComponent(cartId)}` : "";
+  if (!confirmationKey) return Promise.reject(new CheckoutApiError({ kind: "pre-dispatch" }));
+  if (typeof navigator !== "undefined" && navigator.onLine === false) return Promise.reject(new CheckoutApiError({ kind: "pre-dispatch" }));
+  let request: Promise<Response>;
+  try { request = fetch(`${API_URL}/api/orders/confirm${q}`, { method: "POST", headers: { "Idempotency-Key": confirmationKey } }); }
+  catch { return Promise.reject(new CheckoutApiError({ kind: "pre-dispatch" })); }
+  return request.then(async (res) => {
+    if (!res.ok) throw new CheckoutApiError({ kind: "http", status: res.status, body: await res.json().catch(async () => ({ error: await res.text().catch(() => "") })) });
+    try { return await res.json(); }
+    catch { throw new CheckoutApiError({ kind: "invalid-success" }); }
+  }, () => { throw new CheckoutApiError({ kind: "transport" }); });
 }
 
 export async function deleteCartItem(

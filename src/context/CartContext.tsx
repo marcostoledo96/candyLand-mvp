@@ -84,7 +84,11 @@ export const CartProvider = ({ children }: { children: ReactNode }) => {
     }
   };
 
-  const clearCart = () => setCart([]);
+  const clearCart = () => {
+    setCart([]);
+    setCartId(null);
+    try { localStorage.removeItem("cartId"); } catch {}
+  };
 
   const increaseQuantity = async (id: number) => {
     const item = cart.find((i) => i.id === id);
@@ -137,9 +141,10 @@ export const CartProvider = ({ children }: { children: ReactNode }) => {
 
   // Cargar carrito al montar para persistencia
   useEffect(() => {
+    if (!cartId) return;
     (async () => {
       try {
-        const data = await getCart(cartId || undefined);
+        const data = await getCart(cartId);
         applyApiCart(data);
       } catch (e) {
         console.warn("No se pudo cargar el carrito desde backend", e);

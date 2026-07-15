@@ -704,6 +704,75 @@ Chain strategy: not-applicable
 - [ ] 8.4 Railway health.
 - [ ] 8.5 Vercel consume Railway.
 - [ ] 8.6 Checkout end-to-end.
+
+## 7j. Frontend checkout hardening — branch `frontend/checkout-hardening`
+
+Reconciliation: historical 5.4/6.7/8.6 remain backlog references; this slice supersedes them for CH-01..08. The approved architecture exception adds only confirmation idempotency in Express/Prisma plus its forward migration and advisory-lock correction; no dependency, gateway, payment-method, WhatsApp, or unrelated backend/schema change. Strict TDD, one PR, hard cap 3,000.
+
+### Review Workload Forecast (full surface)
+
+| Field | Value |
+|---|---|
+| Estimated changed lines | ~2,110: planning 260 + helpers/API/context 320 + UI/CSS 500 + tests/static 260 + runtime 320 + package 10 + docs/verify/archive 140 + reserve 300 |
+| 400-line budget risk | High |
+| 3,000-line cap | Medium; forbidden above 3,000 |
+| Chained PRs recommended | No; single-pr-default |
+| Decision needed before apply | No |
+| Checkpoints | ≥2,400 pause/reforecast; ≥2,600 defer cosmetic polish; >2,800 defer polish only |
+
+Historical terminal receipt `review-4ce042c68257c4d6` remains frontend-only evidence. Current final authority is approved lineage `checkout-hardening-idempotency-architecture`, including resolved finding `R4-001`. Exact post-verify surface: **1,469 additions + 489 deletions = 1,958 / 3,000**; tracked **18 modified + 10 untracked = 28 paths**; headroom **1,042**. The mandatory checkpoint remains **2,400** and **3,000** is forbidden.
+
+Decision needed before apply: No
+Chained PRs recommended: No
+Chain strategy: size-exception
+400-line budget risk: High
+
+### Scenario traceability
+
+CH-01-A address→payment, CH-01-B revisit; CH-02-A transfer, CH-02-B cash; CH-03-A client validation, CH-03-B rejected/unavailable; CH-04-A exact contract; CH-05-A success, CH-05-B retryable outcome; CH-08-A response-loss replay, CH-08-B key isolation; CH-06-A inspection; CH-07-A 390px keyboard. RED: Phase 1 and RCH-1; GREEN/runtime: Phases 2–4 and RCH-2–7.
+
+### Phase 1: RED pure contracts
+
+- [x] CH-01.1 RED `test/checkout-hardening.test.mjs`: legacy `ciudad` migrates to canonical `localidad`; invalid JSON becomes empty; six-field storage survives revisits.
+- [x] CH-02.1 RED: validate only `efectivo`/`transferencia`, exact six-field checkout/payment/confirm payloads, URI-encoded `cartId`.
+- [x] CH-03.1 RED: pure validation, HTTP/item/pre-dispatch/transport error classifiers, complete-success DTO guard, and `ready→pending→preDispatch|rejected|ambiguous|succeeded` transitions.
+- [x] CH-04.1 RED: duplicate guard, retryable confirmation state, stable-key lifecycle, and success-only clear-state decisions.
+
+### Phase 2: GREEN core and API
+
+- [x] CH-01.2–CH-04.2 GREEN `src/lib/checkout.js` (JSDoc unions/helpers), `src/lib/api.ts` status/body-vs-transport errors, and `src/context/CartContext.tsx` success-only identity reset; Node tests import production helpers.
+
+### Phase 3: GREEN checkout UI
+
+- [x] CH-05.1 RED `test/checkout-hardening.playwright.mjs`: write failing UI cases for retention, exact requests, payment instructions, validation focus/live status, duplicate clicks, all confirmation outcomes, no WhatsApp, and 390px keyboard flow.
+- [x] CH-01.3/CH-02.3 GREEN update `AddressForm.tsx` and `PaymentMethod.tsx`: canonical `localidad`, preserved storage, manual instructions, inline validation, live status/focus.
+- [x] CH-03.3/CH-05.3/CH-06.2 GREEN update `Confirmation.tsx` and `Checkout.module.css`: pending/duplicate guard, retryable transport/invalid-success outcomes with the persisted key, valid-success summary/clear, remove WhatsApp.
+- [x] CH-07.2 preserve light/mobile-first 390px layout, semantic labels, visible focus, inline/live errors; never sacrifice safety, errors, a11y, runtime, verify, or archive at cap gates.
+
+### Phase 4: Verification tests and regressions
+
+- [x] CH-06.1 RED `scripts/assert-checkout-hardening.mjs`: fail on WhatsApp/alert/cards/dark-mode, contract drift, route drift, or dependency changes.
+- [x] CH-06.2 GREEN wire static assertions in `package.json`; keep zero WhatsApp, exact contracts/routes, unchanged dependency counts.
+- [x] CH-07.3 GREEN complete Playwright mocks for 400/404/409/5xx, item errors, stable-key network retry after refresh, duplicate clicks, both payments, retention, live/focus/keyboard, 390×844, clean console.
+- [x] CH-07.4 run `npm test`, static checks, `npm run lint`, `npm run build`, existing checkout/cart tests, and backend confirmation/checkout contract tests plus Prisma generate; no secrets/real DB.
+- [x] CH-05/CH-07 corrective TDD receipt: immutable `origin/main` snapshots fail the changed browser/static contracts; the candidate passes the same 11-scenario safety-net matrix without product rewrites.
+- [x] CH-05.4 historical frontend remediations: fast HTTP 200 double-click remains stable; `review-4ce042c68257c4d6` made known pre-dispatch failures retryable. Its permanent post-dispatch no-resend behavior is superseded by CH-08 keyed retries.
+
+### Phase 5: Docs, verify, archive
+
+- [x] CH-07.5 historical frontend-only independent verify: 7/7 requirements and 11/11 scenarios; superseded as final approval by CH-08.
+- [x] CH-07.6 historical frontend-only archive; retained for lineage and marked superseded in place.
+
+### 7j bounded backend-idempotency remediation (approved architecture)
+
+- [x] RCH-1 **RED**: add frontend key lifecycle/API tests and backend sequential/concurrent replay tests before production changes.
+- [x] RCH-2 **GREEN**: generate, persist, reuse, and clear a UUID-strength confirmation key; send it as `Idempotency-Key`; remove the permanent ambiguous-lock/no-resend behavior.
+- [x] RCH-3 **GREEN**: add nullable unique `Order.confirmationKey` and `confirmationCartId`, plus a forward-only PostgreSQL migration safe for existing rows.
+- [x] RCH-4 **GREEN**: validate and cart-bind the header; replay the existing public DTO without a second stock decrement, order, cart cleanup, or email; resolve unique-conflict races by replaying the winner.
+- [x] RCH-5 **REFACTOR/apply gate**: run focused RED/GREEN tests, Prisma generate/schema checks, all backend/frontend tests, lint/build/static/differential, and checkout Playwright.
+- [x] RCH-6 **R4-001 correction**: acquire a parameterized key-derived PostgreSQL transaction advisory lock before replay/cart/stock work; exact-stock concurrent same-key requests return one DTO with one order/decrement/email and no 400; rollback releases the lock.
+- [x] RCH-7 **fresh independent verify**: 8/8 requirements, 13/13 scenarios, 5/5 advisory-lock acceptance cases, full frontend/backend/Prisma/static/differential/lint/build and clean Playwright PASS.
+- [x] RCH-8 **archive refresh**: replace superseded authority/evidence/totals, add advisory-lock architecture history, and preserve remaining warnings.
 - [ ] 8.7 Admin end-to-end.
 - [x] 8.8 Actualizar README.
 - [ ] 8.9 Guardar memoria Engram final.

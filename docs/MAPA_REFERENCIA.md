@@ -17,7 +17,7 @@ Este documento compara el sitio estático de referencia (`tienda-candyland`) con
 | `trabaja-en-tdc.html` | `/trabaja-con-nosotros` | `src/pages/Trabaja/TrabajaPage.tsx` | No existe | Formulario de postulación; requiere endpoint `POST /api/jobs/applications`. |
 | `contacto.html` | `/contacto` | `src/components/Contact/Contacto.tsx` | Existe | Formulario es falso (`console.log` + `alert`). Requiere `POST /api/contact` real. |
 | — | `/carrito` | `src/pages/CartPage` | Existe | Funcional. |
-| — | `/checkout/direccion`, `/checkout/pago`, `/checkout/confirmacion` | `src/pages/Checkout/*` | Existen | Funcional pero con campos desfasados (`ciudad` vs `localidad`). |
+| — | `/checkout/direccion`, `/checkout/pago`, `/checkout/confirmacion` | `src/pages/Checkout/*` | Existen | Checkout hardened: canonical `localidad`, manual payment flow, retained step state, and success-only clear. |
 | — | `/admin/login`, `/admin`, `/admin/productos`, `/admin/categorias`, `/admin/pedidos` | — | No existen | Obligatorias según `src/AGENTS.md`. |
 
 ### Navegación

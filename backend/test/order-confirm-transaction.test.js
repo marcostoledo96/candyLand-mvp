@@ -97,7 +97,7 @@ function postJson(cartId) {
   return new Promise((resolve, reject) => {
     const data = JSON.stringify({});
     const req = http.request(
-      { method: 'POST', host: '127.0.0.1', port: server.address().port, path: `/api/orders/confirm?cartId=${encodeURIComponent(cartId)}`, headers: { 'content-type': 'application/json', 'content-length': Buffer.byteLength(data) } },
+      { method: 'POST', host: '127.0.0.1', port: server.address().port, path: `/api/orders/confirm?cartId=${encodeURIComponent(cartId)}`, headers: { 'Idempotency-Key': idempotencyKey(cartId), 'content-type': 'application/json', 'content-length': Buffer.byteLength(data) } },
       (res) => {
         let body = '';
         res.on('data', (c) => { body += c; });
@@ -112,6 +112,10 @@ function postJson(cartId) {
     req.write(data);
     req.end();
   });
+}
+
+function idempotencyKey(cartId) {
+  return `4e2e0f2e-8e28-4e42-bf42-${Buffer.from(cartId).toString('hex').slice(0, 12).padEnd(12, '0')}`;
 }
 
 function postJsonDeferred(cartId) {

@@ -1,70 +1,87 @@
-# Design: CandyLand v2 — Admin Orders
+# Design: CandyLand v2 — Checkout Hardening
 
 ## Technical Approach
 
-Implement AO-01..10 as one dependency-free React/TypeScript page in the protected admin shell. Replace the redirect with a lazy route, enable its `NavLink`, extend JSDoc-typed `adminApi.js`, and keep state local. Backend, schema, auth, stock, email, and payment remain unchanged.
+Implement CH-01..07 in the existing React Router checkout. Keep its routes, `CartContext`, backend, and dependencies. Add one JSDoc-typed module for normalization, validation, payloads, guards, errors, and confirmation transitions; Node tests import it directly.
 
 ## Architecture Decisions
 
-| Decision | Choice and rationale | Rejected |
+| Decision | Choice / rationale | Alternatives rejected |
 |---|---|---|
-| Detail | Native `<details>/<summary>` per order loads `GET /api/admin/orders/:id` once; keyboard/focus behavior is native and needs no modal lifecycle. | Dialog; custom accordion |
-| State | One page owns list, filter, detail cache/errors, drafts, and pending order ID. Apply data only after PATCH success. | Store/context; optimistic updates |
-| Status contract | One exported `ADMIN_ORDER_STATUSES` tuple (`PENDING`, `SHIPPED`, `DELIVERED`, `CANCELLED`) drives filters, selectors, runtime request guards, and types. | Backend aliases; free text |
-| Auth/errors | All three methods use `adminRequest`: exact `Unable to verify account status` 401 remains local/retryable; every other 401 calls `expireAdminSession`. | Page-level auth branches |
-| Presentation | Reuse shell/shared states; add only page CSS. `CASH` → `Efectivo`, `TRANSFER` → `Transferencia`; missing/unknown fields → `No disponible`. | New component library |
+| Locality | Normalize stored `localidad || ciudad`, discard `ciudad`, and rewrite the six canonical fields; invalid JSON safely becomes empty. | Dual fields; eager clear |
+| State | Route components retain UI state through existing storage. `clearCart` resets cart identity and the persisted confirmation key only after verified success. | New store/context |
+| Pure core | JSDoc unions/functions in `src/lib/checkout.js` give TS inference and direct `node --test` coverage. | Dependency/transpile setup |
+| Confirmation | Explicit `ready → pending → preDispatch | succeeded | rejected`; one UUID-strength key is retained per cart attempt and sent in `Idempotency-Key`. Every transport failure is retryable with that key; only verified success clears it. | Permanent ambiguous lock; automatic retries; optimistic success |
+| Idempotency/concurrency | Nullable unique `Order.confirmationKey` plus `confirmationCartId` binds a replay to its originating cart. A stable `Idempotency-Key` is reused for every retry. Before replay/cart/stock work, a parameterized PostgreSQL advisory lock derived from the validated key serializes exact-stock concurrent requests; rollback releases it. The transaction returns one public DTO and sends one email for the winner. | Process-local locks; payload hash without cart binding |
+| Payment/UI | Only manual methods, endpoint-provided bank data, native controls, live messages, and focused errors. | Cards, hardcoding, WhatsApp, alerts |
 
-## Data Flow and Failure States
+## Data Flow
 
 ```text
-/admin/pedidos -> RequireAdminAuth -> AdminLayout -> AdminOrdersPage
-  -> listAdminOrders(token, filter?) -> initial loading/error/empty/success
-  -> <details> toggle -> getAdminOrder(token,id) -> inline loading/error+retry/detail
-  -> updateAdminOrderStatus(token,id,{status}) -> pending -> replace exact list/cache item
-  -> adminRequest -> transient 401 local | genuine 401 expire+login redirect
+checkoutData(old/new) -> normalize/validate -> POST /api/checkout -> payment
+paymentMethod -> POST /api/payment-method -> checkoutBank -> confirmation
+Confirm action -> pending -> preDispatch -> retryable rejected (preserve; no POST/lock)
+                         -> transport rejection -> retryable (same persisted key)
+                         -> HTTP reject (preserve) | invalid-2xx retryable (same key)
+                       -> valid success DTO -> summary -> clear cart + checkout storage
 ```
-
-Filter retry retains its canonical value. Initial failure shows full retry; later list/detail/update failures preserve orders, expanded detail, and draft. PATCH `400`, `404`, network/5xx, or transient `401` leaves server status unchanged and shows `role="alert"`; pending disables submit and blocks duplicates. Genuine `401` follows shared expiry. Success replaces only the matching list/cache DTO—never retrying the mutation as refresh.
 
 ## File Changes
 
 | File | Action | Description |
 |---|---|---|
-| `src/App.tsx` | Modify | Lazy protected orders page instead of redirect |
-| `src/pages/Admin/AdminLayout.tsx` | Modify | Enable route-aware Orders `NavLink` |
-| `src/pages/Admin/AdminOrdersPage.tsx` | Create | List/filter, detail, update, safe fallbacks |
-| `src/pages/Admin/AdminOrdersPage.module.css` | Create | Light, responsive rows/details, visible focus |
-| `src/lib/adminApi.js` | Modify | Types, allowlist, list/detail/update methods |
-| `test/admin-orders.test.mjs` | Create | RED API/type-guard/error contracts |
-| `test/admin-auth-products.playwright.mjs` | Modify | AO-01..10 mocked runtime matrix |
-| `scripts/assert-admin-auth-products.mjs` | Modify | Route/nav/scope/static contracts |
-| `package.json` | Modify | Wire Node/static checks; no dependencies |
-| `openspec/changes/2026-06-candyland-v2/tasks.md` | Modify | Scenario traceability and budget gates |
-| `verify-admin-orders.md`, `archive-admin-orders.md` | Create | Per-slice evidence and history |
-| `docs/INDEX.md` | Conditional | Remove stale “orders deferred” wording during archive |
+| `src/lib/checkout.js` | Create | Pure typed contracts and reducer |
+| `src/lib/api.ts` | Modify | Preserve HTTP status/body versus transport failure |
+| `src/pages/Checkout/{AddressForm,PaymentMethod,Confirmation}.tsx` | Modify | Canonical forms, instructions, safe confirmation |
+| `src/pages/Checkout/Checkout.module.css` | Modify | Scoped mobile/a11y/error styles; remove WhatsApp |
+| `src/context/CartContext.tsx` | Modify | Success-only identity/key reset |
+| `backend/app.js` | Modify | Validate/bind/replay idempotency key around the existing confirmation transaction |
+| `backend/prisma/schema.prisma` | Modify | Unique nullable confirmation key and originating cart binding on `Order` |
+| `backend/prisma/migrations/*_confirmation_idempotency/migration.sql` | Create | Forward-only nullable-column + unique-index PostgreSQL migration |
+| `backend/test/order-confirm-idempotency.test.js` | Create | Stubbed sequential/concurrent replay and email/stock regression coverage |
+| `test/checkout-hardening.test.mjs` | Create | Node RED contracts/transitions |
+| `scripts/assert-checkout-hardening.mjs` | Create | Forbidden strings/actions and dependency checks |
+| `test/checkout-hardening.playwright.mjs` | Create | Mocked CH-01..07 runtime matrix |
+| `package.json` | Modify | Wire checks; no dependencies |
+| `openspec/changes/2026-06-candyland-v2/{tasks.md,verify-checkout-hardening.md,archive-checkout-hardening.md}` | Modify/Create | Planning and evidence |
+| `docs/INDEX.md` | Conditional | Archive link only |
+
+`src/App.tsx` is unchanged: `/checkout`, `/checkout/direccion`, `/checkout/pago`, and `/checkout/confirmacion` already use the required components.
 
 ## Interfaces / Contracts
 
-`AdminOrderStatus` is the exact four-value union. `AdminOrderItem = { productId:number; productTitle:string|null; quantity:number; priceCents:number; subtotalCents:number }`. `AdminOrderContact = { id:number; name:string; phone:string; address:string; city:string; province:string; postalCode:string }`. `AdminOrder = { id:number; orderNumber:string; status:AdminOrderStatus; totalCents:number; paymentMethod:'CASH'|'TRANSFER'|null; paymentStatus:string|null; contact:AdminOrderContact|null; items:AdminOrderItem[]; createdAt:string; updatedAt:string }`.
+Storage: `cartId`; `checkoutData` (six strings; legacy `ciudad` read-only); `paymentMethod`; transfer-only `checkoutBank`; `checkoutConfirmation = {cartId,key}`; legacy `orderNumber` is no longer written. Confirmed success removes all six keys; otherwise preserve them. A different cart replaces the stored key with a new attempt key.
 
-Add `listAdminOrders(token,status?)`, `getAdminOrder(token,id)`, and `updateAdminOrderStatus(token,id,status)`. List uses `?status=${encodeURIComponent(status)}` only for allowed values; PATCH sends exactly `{ status }`. Backend mapping: `customer` → `contact`, `items[].product.title` → `productTitle`, quantity × price → `subtotalCents`, payment → top-level fields.
+Requests remain exact: checkout six-field JSON; payment `{method}`; confirmation bodyless with `Idempotency-Key`; present `cartId` URI-encoded. The backend accepts a UUID-format key within its documented length bound and requires any replay to match the stored `confirmationCartId`. Success requires all `ConfirmOrderResponse` fields before clearing.
+
+| Input | Classification / UI |
+|---|---|
+| Client invalid; checkout `400 missing[]` | Field errors, ARIA linkage, focus first invalid field |
+| `400` missing checkout/payment, empty cart, invalid quantity/method | Definite rejection; targeted prior-step/cart action |
+| `400 inactiveProducts[]` / `insufficientStock[]` | Definite item-specific cart message |
+| `404` / `409` | Missing or changed cart; preserve state and guide to cart |
+| Other HTTP, including `5xx` | Definite backend rejection; preserve state, no automatic retry |
+| Offline or synchronous `fetch` invocation failure before dispatch | Retryable `preDispatch`; no confirmation POST, no ambiguity lock, preserve checkout state |
+| Confirmation promise rejection after invocation or invalid `2xx` DTO | Retryable; retain key/cart, focus alert, no clear/success |
+
+Address/payment transport failures remain retryable because they cannot create an order.
 
 ## Testing Strategy
 
 | Layer | Coverage |
 |---|---|
-| Node RED | Paths/query/body, exact allowlist rejection, 400/404/network, both 401 classes, no data mutation |
-| Static/build | Protected route/nav, no public chrome/dark/deps/payment actions; lint/build/assertions |
-| Chromium runtime | AO-01..10: four list states, retained filter/retry, labels/fallbacks, detail keyboard/focus, single PATCH, delayed success, all failures, 390×844, clean console |
-| Backend regression | Existing pure + HTTP orders, auth, and middleware tests with stubs; no DB, `.env`, or secrets |
+| Node RED | Key lifecycle, exact header, validation, DTO guard, transitions |
+| Static/build | Routes, forbidden actions, lint/build, dependency counts |
+| Playwright | Retention; exact reused header across promise/DNS-like failures and refresh; duplicate block; success-only clear; both instructions; live/focus/keyboard; 390×844; clean console |
+| Backend | Stubbed sequential and concurrent replays prove one order, one stock decrement, and one email; migration/schema checks remain offline |
 
 ## Threat Matrix
 
-Routing is applicable and gets protected-route/nav RED tests. Reference rows: Documentation-like paths — **N/A**, no classification/execution; Git repository selection — **N/A**, no Git; Commit state — **N/A**, no commits; Push state — **N/A**, no push; PR commands — **N/A**, no PR automation.
+N/A — no routing change, shell, subprocess, VCS/PR automation, executable-file classification, or product process-integration boundary.
 
-## Rollout, Rollback, and PR Forecast
+## Migration / Rollout / PR Forecast
 
-No migration or flag. Roll back the frontend commit; existing APIs/data remain compatible. Forecast: planning **~300**, React/API/CSS **~520**, Node/static/runtime tests **~430**, verify/archive/docs **~150**, reserve **~250** = **~1,650 changed lines**. Single PR; 400-line risk High, 3,000-line risk Low. Checkpoint/reforecast at 2,400; at 2,600 stop and prepare a split; if projected final exceeds 2,800, defer detail polish only while retaining list, functional detail, status updates, runtime/a11y/errors, verify, and archive. Never exceed 3,000.
+Forward-only PostgreSQL migration: add nullable columns first, then the unique index; existing orders remain valid with `NULL` keys. Deploy prerequisite: run `prisma migrate deploy` before serving the idempotent confirmation backend. Forecast starts from the approved **1,958 / 3,000** surface; checkpoint at **2,400**, split/reforecast at **2,600**, and **3,000 is forbidden**. Safety, runtime, a11y, errors, migration/schema checks, verify, and archive stay.
 
 Decision needed before apply: No  
 Chained PRs recommended: No  
@@ -72,13 +89,17 @@ Chained PRs recommended: No
 
 ## History
 
-This design advances the next slice; completed admin and backend-orders verify/archive artifacts remain authoritative.
+Supersedes the admin-orders content of this rolling design artifact for the next slice only; prior specs, verify/archive reports, and Engram revisions remain authoritative. No implementation, Git operation, or secret access occurred.
+
+## Open Questions
+
+None.
 
 ## Result Contract
 
 - **status**: success
-- **executive_summary**: AO-01..10 define protected, resilient admin order management.
+- **executive_summary**: CH-01..08 use a minimal typed frontend core and cart-bound backend idempotency so an unverified confirmation can be retried safely.
 - **artifacts**: `openspec/changes/2026-06-candyland-v2/design.md`; Engram `sdd/2026-06-candyland-v2/design`
 - **next_recommended**: sdd-tasks
-- **risks**: DTO drift in string fields; runtime-test growth; budget drift
-- **skill_resolution**: paths-injected — sdd-design, frontend-design, playwright-best-practices, typescript-advanced-types, karpathy-guidelines, ponytail; cognitive-doc-design; shared conventions
+- **risks**: localStorage may be unavailable; a deployment must apply the forward migration before the new backend; runtime surface may approach gates
+- **skill_resolution**: paths-injected — sdd-design, frontend-design, playwright-best-practices, typescript-advanced-types, karpathy-guidelines, ponytail; shared conventions

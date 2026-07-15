@@ -17,6 +17,7 @@ const carts = new Map();
 const products = new Map();
 
 const tx = {
+  $executeRaw: async () => 1,
   product: {
     updateMany: async ({ where: { id }, data: { stock: { decrement } } }) => {
       const p = products.get(id);
@@ -41,6 +42,7 @@ const tx = {
     },
   },
   order: {
+    findUnique: async () => null,
     create: async () => ({
       id: 99, orderNumber: 'CL-123456', totalCents: 50,
       items: [{ productId: 11, quantity: 1, priceCents: 50 }],
@@ -52,6 +54,7 @@ const tx = {
 };
 
 const fakePrisma = {
+  order: { findUnique: tx.order.findUnique },
   $transaction: async (fn) => fn(tx),
 };
 
@@ -82,7 +85,7 @@ function postJson(cartId) {
   return new Promise((resolve, reject) => {
     const data = JSON.stringify({});
     const req = http.request(
-      { method: 'POST', host: '127.0.0.1', port: server.address().port, path: `/api/orders/confirm?cartId=${encodeURIComponent(cartId)}`, headers: { 'content-type': 'application/json', 'content-length': Buffer.byteLength(data) } },
+      { method: 'POST', host: '127.0.0.1', port: server.address().port, path: `/api/orders/confirm?cartId=${encodeURIComponent(cartId)}`, headers: { 'Idempotency-Key': idempotencyKey(cartId), 'content-type': 'application/json', 'content-length': Buffer.byteLength(data) } },
       (res) => {
         let body = '';
         res.on('data', (c) => { body += c; });
@@ -97,6 +100,10 @@ function postJson(cartId) {
     req.write(data);
     req.end();
   });
+}
+
+function idempotencyKey(cartId) {
+  return `4e2e0f2e-8e28-4e42-bf42-${Buffer.from(cartId).toString('hex').slice(0, 12).padEnd(12, '0')}`;
 }
 
 const server = http.createServer(app);
