@@ -15,7 +15,7 @@ function sortKeys(value) {
   return value;
 }
 
-test('runtime batch manifest is deterministic, covers 64 scenarios exactly once, and guards every batch', async () => {
+test('runtime batch manifest is deterministic, covers 65 scenarios exactly once, and guards every batch', async () => {
   const source = await readFile(runnerPath, 'utf8');
   const packageJson = JSON.parse(await readFile(packagePath, 'utf8'));
   const match = source.match(/const RUNTIME_BATCHES = Object\.freeze\((\{[\s\S]*?\})\);/);
@@ -25,16 +25,16 @@ test('runtime batch manifest is deterministic, covers 64 scenarios exactly once,
   const scenarioIds = Object.values(batches).flat();
 
   assert.deepEqual(Object.keys(batches), ['auth-products', 'categories', 'product-form', 'orders-foundation', 'orders-races-failures']);
-  assert.equal(scenarioIds.length, 64);
-  assert.equal(new Set(scenarioIds).size, 64);
-  assert.deepEqual([...scenarioIds].sort((a, b) => a - b), Array.from({ length: 64 }, (_, index) => index + 1));
+  assert.equal(scenarioIds.length, 65);
+  assert.equal(new Set(scenarioIds).size, 65);
+  assert.deepEqual([...scenarioIds].sort((a, b) => a - b), Array.from({ length: 65 }, (_, index) => index + 1));
 
   for (const batch of Object.keys(batches)) {
     assert.ok(source.includes(`shouldRun('${batch}')`), `runtime runner must guard ${batch}`);
   }
   assert.match(source, /page\.url\(\)\.match/, 'runtime runner must accept a deterministic URL batch filter without relying on unavailable URL globals');
   assert.ok(source.includes('detail.open = true'), 'standalone order batch must establish its native details precondition');
-  assert.equal((source.match(/await orderSelect\.waitFor\(\{ state: 'attached' \}\)/g) ?? []).length, 2, 'order race batch must wait for attached controls after each details setup');
+  assert.equal((source.match(/await orderSelect\.waitFor\(\{ state: 'attached' \}\)/g) ?? []).length, 3, 'order race batch must wait for attached controls after each details setup');
   assert.match(packageJson.scripts.test, /admin-runtime-batches\.test\.mjs/, 'root Node suite must include the batch-manifest guard');
 });
 

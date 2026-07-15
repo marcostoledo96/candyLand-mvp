@@ -81,6 +81,7 @@ const AdminOrdersPage: React.FC = () => {
     if (isOrderPending(pendingRef.current, order.id)) return;
     const status = drafts[order.id] ?? order.status;
     const sequence = (pendingRef.current[order.id] ?? 0) + 1;
+    const listGenerationAtStart = listGeneration.current;
     pendingRef.current = { ...pendingRef.current, [order.id]: sequence };
     setPending(pendingRef.current);
     setUpdateErrors((current) => ({ ...current, [order.id]: '' }));
@@ -89,7 +90,7 @@ const AdminOrdersPage: React.FC = () => {
       if (!token) throw new Error('No hay sesión activa.');
       const updated = await updateAdminOrderStatus(token, order.id, status);
       if (pendingRef.current[order.id] !== sequence) return;
-      listGeneration.current += 1;
+      if (listGeneration.current === listGenerationAtStart) listGeneration.current += 1;
       replaceOrder(updated);
       setDrafts((current) => { const { [order.id]: _, ...rest } = current; return rest; });
     } catch (cause) {

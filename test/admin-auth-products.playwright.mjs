@@ -44,6 +44,7 @@ async (page) => {
     orderDetailGets: 0,
     orderListRequests: [],
     delayedOrderFilters: new Set(),
+    liveDelayedOrderFilters: new Set(),
     orderListResolvers: [],
     orders: [
       { id: 11, orderNumber: 'CL-101', status: 'PENDING', totalCents: 1250, paymentMethod: 'CASH', paymentStatus: 'PENDING', contact: { id: 1, name: 'Ana', phone: '11-1111', address: 'Calle 1', city: 'CABA', province: 'Buenos Aires', postalCode: '1000' }, items: [{ productId: 1, productTitle: 'Gomitas', quantity: 2, priceCents: 625, subtotalCents: 1250 }] },
@@ -64,7 +65,7 @@ async (page) => {
     categories: [15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29],
     'product-form': [30, 31, 32, 33, 34, 35, 36, 37, 38, 39, 40, 41, 42, 43, 44, 45, 46, 47, 48],
     'orders-foundation': [49, 50, 51, 52, 53, 54, 55, 56],
-    'orders-races-failures': [57, 58, 59, 60, 61, 62, 63, 64],
+    'orders-races-failures': [57, 58, 59, 60, 61, 62, 63, 64, 65],
   });
   const runtimeBatch = globalThis.__CANDYLAND_RUNTIME_BATCH__ ?? page.url().match(/[?&]runtimeBatch=([^&]+)/)?.[1] ?? 'all';
   assert(runtimeBatch === 'all' || Object.hasOwn(RUNTIME_BATCHES, runtimeBatch), `unknown runtime batch: ${runtimeBatch}`);
@@ -117,11 +118,12 @@ async (page) => {
       if (request.method() === 'GET') {
         const status = /[?&]status=([^&]+)/.exec(url)?.[1] ?? '';
         state.orderListRequests.push(status);
-        const orders = state.ordersStatus === 'empty' ? [] : state.orders.filter((item) => !status || item.status === status).map((item) => ({ ...item }));
+        let orders = state.ordersStatus === 'empty' ? [] : state.orders.filter((item) => !status || item.status === status).map((item) => ({ ...item }));
         if (state.delayOrders || state.delayedOrderFilters.has(status)) await new Promise((resolve) => {
           state.releaseOrders = resolve;
           state.orderListResolvers.push({ status, resolve });
         });
+        if (state.liveDelayedOrderFilters.has(status)) orders = state.orders.filter((item) => !status || item.status === status).map((item) => ({ ...item }));
         if (state.ordersStatus !== 200 && state.ordersStatus !== 'empty') {
           const transient = state.ordersStatus === 'transient401';
           return json(route, { error: transient ? 'Unable to verify account status' : 'Orders unavailable' }, transient ? 401 : state.ordersStatus);
@@ -656,8 +658,34 @@ async (page) => {
     state.orderListResolvers.at(-1)?.resolve();
     state.delayedOrderFilters.delete('');
     await page.waitForTimeout(20);
-    if (await page.locator('summary').filter({ hasText: 'Pendiente' }).count() !== 0) orderingErrors.push('pre-mutation list snapshot restored the stale order');
-    if (orderingErrors.length) throw new Error(orderingErrors.join(' | '));
+     if (await page.locator('summary').filter({ hasText: 'Pendiente' }).count() !== 0) orderingErrors.push('pre-mutation list snapshot restored the stale order');
+
+     // A list started after PATCH must remain valid when PATCH completes first.
+     state.orders[0].status = 'PENDING';
+     state.orders[1].status = 'DELIVERED';
+     await filterSelect.selectOption('PENDING');
+     await page.getByText('CL-101', { exact: true }).waitFor();
+     await page.locator('details').filter({ hasText: 'CL-101' }).evaluate((detail) => { detail.open = true; });
+     await orderSelect.waitFor({ state: 'attached' });
+     await orderSelect.selectOption('DELIVERED');
+     state.delayOrderMutation = true;
+     await orderSave.click();
+     await page.getByRole('button', { name: 'Guardando…' }).waitFor();
+     state.delayedOrderFilters.add('DELIVERED');
+     state.liveDelayedOrderFilters.add('DELIVERED');
+     const newerLists = state.orderListResolvers.length;
+     await filterSelect.selectOption('DELIVERED');
+     await page.waitForTimeout(20);
+     assert(state.orderListResolvers.length === newerLists + 1, 'newer filter request did not start while PATCH was pending');
+     state.releaseOrderMutation?.();
+     state.delayOrderMutation = false;
+     await page.getByRole('button', { name: 'Guardar estado' }).waitFor();
+     state.orderListResolvers.at(-1)?.resolve();
+     state.delayedOrderFilters.delete('DELIVERED');
+     await page.getByText('CL-102', { exact: true }).waitFor();
+     await page.getByText('CL-101', { exact: true }).waitFor();
+     state.liveDelayedOrderFilters.delete('DELIVERED');
+     if (orderingErrors.length) throw new Error(orderingErrors.join(' | '));
 
    state.orders[0].status = 'DELIVERED';
    state.orders[1].status = 'SHIPPED';

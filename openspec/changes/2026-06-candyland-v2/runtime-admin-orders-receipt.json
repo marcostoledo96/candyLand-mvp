@@ -1,19 +1,19 @@
 {
   "schema": "candyland.playwright-runtime-receipt/v1",
-  "identitySha256": "4ef14027f1b9a5f56d70b4e9f623895cf227af47b1db10e09afa0ac909b904ef",
+  "identitySha256": "1ae991268984d618812b56699f0ea6ff3c30f690bbec50899e51854778e8ba10",
   "identityCanonicalization": "sha256(utf8(JSON.stringify(recursive-key-sort(receipt-without-identitySha256))))",
   "identityCommand": "npm run assert:admin-runtime-receipt",
-  "runnerSha256": "62584425d54999ad5f53fb68b6950883290a514779491d5f650bcaf4d458240c",
-  "previewIndexSha256": "e5e03b2b7b0a017bf6fbc713c9765d497b54ee97818bd4174fd1c20dee7cbb1e",
+  "runnerSha256": "79a58c9214cea404e7268d5549610d3200f4461d2406319d8ff28cdb3726bab0",
+  "previewIndexSha256": "b49bf8fc791eb09833bbd2151453acace74540a05020dca2bca76669d31bbda7",
   "runtime": "clean vite preview at http://127.0.0.1:4182",
   "batches": [
     { "name": "auth-products", "scenarios": 14, "consoleErrors": 0, "networkErrors": 0 },
     { "name": "categories", "scenarios": 15, "consoleErrors": 0, "networkErrors": 0 },
     { "name": "product-form", "scenarios": 19, "consoleErrors": 0, "networkErrors": 0 },
     { "name": "orders-foundation", "scenarios": 8, "consoleErrors": 0, "networkErrors": 0 },
-    { "name": "orders-races-failures", "scenarios": 8, "consoleErrors": 0, "networkErrors": 0 }
+    { "name": "orders-races-failures", "scenarios": 9, "consoleErrors": 0, "networkErrors": 0 }
   ],
-  "totalScenarios": 64,
+  "totalScenarios": 65,
   "totalConsoleErrors": 0,
   "totalNetworkErrors": 0
 }

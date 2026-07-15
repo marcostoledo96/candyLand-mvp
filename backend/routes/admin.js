@@ -563,7 +563,7 @@ router.patch('/admin/orders/:id', adminGuard, async (req, res) => {
       if (!existing) throw orderStatusError(404, { error: 'Order not found' });
 
       if (existing.status !== 'CANCELLED' && normalized.status === 'CANCELLED') {
-        for (const item of existing.items) {
+        for (const item of [...existing.items].sort((a, b) => a.productId - b.productId)) {
           await tx.product.updateMany({ where: { id: item.productId }, data: { stock: { increment: item.quantity } } });
         }
       } else if (existing.status === 'CANCELLED' && normalized.status !== 'CANCELLED') {

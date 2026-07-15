@@ -22,6 +22,7 @@ const path = require('path');
 const categories = new Map();
 const orders = new Map();
 const products = new Map();
+const productUpdateBatches = [];
 let nextCategoryId = 1;
 
 function cloneOrder(order) {
@@ -118,8 +119,17 @@ const fakePrisma = {
     const orderSnapshot = new Map(Array.from(orders, ([id, order]) => [id, cloneOrder(order)]));
     const productSnapshot = new Map(Array.from(products, ([id, product]) => [id, { ...product }]));
     let unlock;
+    const productUpdates = [];
+    productUpdateBatches.push(productUpdates);
     const tx = {
       ...fakePrisma,
+      product: {
+        ...fakePrisma.product,
+        updateMany: async (args) => {
+          productUpdates.push(args.where.id);
+          return fakePrisma.product.updateMany(args);
+        },
+      },
       $queryRaw: async (query) => {
         const [id] = query.values;
         unlock = await lockOrder(id);
@@ -377,6 +387,38 @@ async function run() {
     const reactivateResults = await Promise.all([1, 2].map(() => request({ method: 'PATCH', path: '/api/admin/orders/1', token: TOKEN, body: { status: 'PENDING' } })));
     assert.deepEqual(reactivateResults.map((result) => result.status), [200, 200]);
     assert.equal(products.get(10).stock, 8, 'one reservation is made once');
+  });
+
+  await test('concurrent cancellations update overlapping products in deterministic order', async () => {
+    const stock11 = products.get(11).stock;
+    const stock12 = products.get(12).stock;
+    orders.set(3, {
+      ...cloneOrder(orders.get(1)), id: 3, orderNumber: 'CL-3', status: 'PENDING',
+      items: [
+        { productId: 12, quantity: 2, priceCents: 50, product: { id: 12, title: 'Gomita' } },
+        { productId: 11, quantity: 1, priceCents: 50, product: { id: 11, title: 'Chicle' } },
+      ],
+    });
+    orders.set(4, {
+      ...cloneOrder(orders.get(1)), id: 4, orderNumber: 'CL-4', status: 'PENDING',
+      items: [
+        { productId: 11, quantity: 3, priceCents: 50, product: { id: 11, title: 'Chicle' } },
+        { productId: 12, quantity: 4, priceCents: 50, product: { id: 12, title: 'Gomita' } },
+      ],
+    });
+    try {
+      const batchesBefore = productUpdateBatches.length;
+      const results = await Promise.all([3, 4].map((id) => request({ method: 'PATCH', path: `/api/admin/orders/${id}`, token: TOKEN, body: { status: 'CANCELLED' } })));
+      assert.deepEqual(results.map((result) => result.status), [200, 200]);
+      assert.deepEqual(productUpdateBatches.slice(batchesBefore), [[11, 12], [11, 12]]);
+      assert.equal(products.get(11).stock, stock11 + 4);
+      assert.equal(products.get(12).stock, stock12 + 6);
+    } finally {
+      products.get(11).stock = stock11;
+      products.get(12).stock = stock12;
+      orders.delete(3);
+      orders.delete(4);
+    }
   });
 
   await test('PATCH re-reserve with insufficient stock rolls back status and prior decrements', async () => {
