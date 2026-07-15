@@ -21,7 +21,28 @@ const path = require('path');
 // --- Stub prismaClient BEFORE app.js is required (it captures it at import) ---
 const categories = new Map();
 const orders = new Map();
+const products = new Map();
+const productUpdateBatches = [];
 let nextCategoryId = 1;
+
+function cloneOrder(order) {
+  return { ...order, payment: { ...order.payment }, customer: { ...order.customer }, items: order.items.map((item) => ({ ...item, product: { ...item.product } })) };
+}
+
+function restore(map, snapshot, clone) {
+  map.clear();
+  snapshot.forEach((value, id) => map.set(id, clone(value)));
+}
+
+const orderLocks = new Map();
+async function lockOrder(id) {
+  const previous = orderLocks.get(id);
+  let release;
+  const current = new Promise((resolve) => { release = resolve; });
+  orderLocks.set(id, current);
+  await previous;
+  return () => { if (orderLocks.get(id) === current) orderLocks.delete(id); release(); };
+}
 
 const fakePrisma = {
   // Categories
@@ -69,6 +90,13 @@ const fakePrisma = {
       // we use a separate map for product counts.
       return productCountsByCategory.get(categoryId) || 0;
     },
+    findUnique: async ({ where: { id } }) => products.get(id) || null,
+    updateMany: async ({ where, data }) => {
+      const product = products.get(where.id);
+      if (!product || (where.active !== undefined && product.active !== where.active) || (where.stock?.gte !== undefined && product.stock < where.stock.gte)) return { count: 0 };
+      product.stock += data.stock.increment || -(data.stock.decrement || 0);
+      return { count: 1 };
+    },
   },
   // Orders
   order: {
@@ -87,6 +115,34 @@ const fakePrisma = {
   },
   // User lookup used by requireAdmin re-check (active admin).
   user: { findUnique: async () => ({ id: 1, email: 'admin@candy.com', role: 'ADMIN', active: true }) },
+  $transaction: async (callback) => {
+    const orderSnapshot = new Map(Array.from(orders, ([id, order]) => [id, cloneOrder(order)]));
+    const productSnapshot = new Map(Array.from(products, ([id, product]) => [id, { ...product }]));
+    let unlock;
+    const productUpdates = [];
+    productUpdateBatches.push(productUpdates);
+    const tx = {
+      ...fakePrisma,
+      product: {
+        ...fakePrisma.product,
+        updateMany: async (args) => {
+          productUpdates.push(args.where.id);
+          return fakePrisma.product.updateMany(args);
+        },
+      },
+      $queryRaw: async (query) => {
+        const [id] = query.values;
+        unlock = await lockOrder(id);
+        await new Promise(setImmediate);
+        return orders.has(id) ? [{ id }] : [];
+      },
+    };
+    try { return await callback(tx); } catch (error) {
+      restore(orders, orderSnapshot, cloneOrder);
+      restore(products, productSnapshot, (product) => ({ ...product }));
+      throw error;
+    } finally { if (unlock) unlock(); }
+  },
 };
 
 const productCountsByCategory = new Map();
@@ -248,12 +304,15 @@ async function run() {
     customer: { id: 42, name: 'Ana', phone: '1', address: 'a', city: 'c', province: 'p', postalCode: '1' },
     items: [{ productId: 10, quantity: 2, priceCents: 50, product: { id: 10, title: 'Caramelo' } }],
   });
+  products.set(10, { id: 10, title: 'Caramelo', active: true, stock: 8 });
   orders.set(2, {
-    id: 2, orderNumber: 'CL-2', status: 'SHIPPED', totalCents: 200, createdAt: new Date(), updatedAt: new Date(),
+    id: 2, orderNumber: 'CL-2', status: 'CANCELLED', totalCents: 200, createdAt: new Date(), updatedAt: new Date(),
     payment: { method: 'TRANSFER', status: 'PENDING' },
     customer: { id: 43, name: 'Bo', phone: '2', address: 'b', city: 'c', province: 'p', postalCode: '2' },
-    items: [{ productId: 11, quantity: 4, priceCents: 50, product: { id: 11, title: 'Chicle' } }],
+    items: [{ productId: 11, quantity: 1, priceCents: 50, product: { id: 11, title: 'Chicle' } }, { productId: 12, quantity: 4, priceCents: 50, product: { id: 12, title: 'Gomita' } }],
   });
+  products.set(11, { id: 11, title: 'Chicle', active: true, stock: 5 });
+  products.set(12, { id: 12, title: 'Gomita', active: true, stock: 3 });
 
   await test('GET /api/admin/orders returns list with id/status/total/payment/contact/items', async () => {
     const r = await request({ method: 'GET', path: '/api/admin/orders', token: TOKEN });
@@ -300,6 +359,74 @@ async function run() {
     assert.equal(r.status, 200);
     assert.equal(r.body.status, 'SHIPPED');
     assert.equal(orders.get(1).status, 'SHIPPED');
+    assert.equal(products.get(10).stock, 8);
+  });
+
+  await test('PATCH non-CANCELLED -> CANCELLED restores stock exactly once', async () => {
+    const r = await request({ method: 'PATCH', path: '/api/admin/orders/1', token: TOKEN, body: { status: 'cancelado' } });
+    assert.equal(r.status, 200);
+    assert.equal(products.get(10).stock, 10);
+  });
+
+  await test('PATCH CANCELLED -> CANCELLED does not restock again', async () => {
+    const r = await request({ method: 'PATCH', path: '/api/admin/orders/1', token: TOKEN, body: { status: 'CANCELLED' } });
+    assert.equal(r.status, 200);
+    assert.equal(products.get(10).stock, 10);
+  });
+
+  await test('PATCH CANCELLED -> non-CANCELLED re-reserves stock', async () => {
+    const r = await request({ method: 'PATCH', path: '/api/admin/orders/1', token: TOKEN, body: { status: 'PENDING' } });
+    assert.equal(r.status, 200);
+    assert.equal(products.get(10).stock, 8);
+  });
+
+  await test('concurrent CANCELLED/reactivation requests serialize stock adjustments', async () => {
+    const cancelResults = await Promise.all([1, 2].map(() => request({ method: 'PATCH', path: '/api/admin/orders/1', token: TOKEN, body: { status: 'CANCELLED' } })));
+    assert.deepEqual(cancelResults.map((result) => result.status), [200, 200]);
+    assert.equal(products.get(10).stock, 10, 'one reservation is restored once');
+    const reactivateResults = await Promise.all([1, 2].map(() => request({ method: 'PATCH', path: '/api/admin/orders/1', token: TOKEN, body: { status: 'PENDING' } })));
+    assert.deepEqual(reactivateResults.map((result) => result.status), [200, 200]);
+    assert.equal(products.get(10).stock, 8, 'one reservation is made once');
+  });
+
+  await test('concurrent cancellations update overlapping products in deterministic order', async () => {
+    const stock11 = products.get(11).stock;
+    const stock12 = products.get(12).stock;
+    orders.set(3, {
+      ...cloneOrder(orders.get(1)), id: 3, orderNumber: 'CL-3', status: 'PENDING',
+      items: [
+        { productId: 12, quantity: 2, priceCents: 50, product: { id: 12, title: 'Gomita' } },
+        { productId: 11, quantity: 1, priceCents: 50, product: { id: 11, title: 'Chicle' } },
+      ],
+    });
+    orders.set(4, {
+      ...cloneOrder(orders.get(1)), id: 4, orderNumber: 'CL-4', status: 'PENDING',
+      items: [
+        { productId: 11, quantity: 3, priceCents: 50, product: { id: 11, title: 'Chicle' } },
+        { productId: 12, quantity: 4, priceCents: 50, product: { id: 12, title: 'Gomita' } },
+      ],
+    });
+    try {
+      const batchesBefore = productUpdateBatches.length;
+      const results = await Promise.all([3, 4].map((id) => request({ method: 'PATCH', path: `/api/admin/orders/${id}`, token: TOKEN, body: { status: 'CANCELLED' } })));
+      assert.deepEqual(results.map((result) => result.status), [200, 200]);
+      assert.deepEqual(productUpdateBatches.slice(batchesBefore), [[11, 12], [11, 12]]);
+      assert.equal(products.get(11).stock, stock11 + 4);
+      assert.equal(products.get(12).stock, stock12 + 6);
+    } finally {
+      products.get(11).stock = stock11;
+      products.get(12).stock = stock12;
+      orders.delete(3);
+      orders.delete(4);
+    }
+  });
+
+  await test('PATCH re-reserve with insufficient stock rolls back status and prior decrements', async () => {
+    const r = await request({ method: 'PATCH', path: '/api/admin/orders/2', token: TOKEN, body: { status: 'PENDING' } });
+    assert.equal(r.status, 400);
+    assert.equal(orders.get(2).status, 'CANCELLED');
+    assert.equal(products.get(11).stock, 5);
+    assert.equal(products.get(12).stock, 3);
   });
 
   await test('PATCH /api/admin/orders/:id with invalid status -> 400 and does not modify', async () => {

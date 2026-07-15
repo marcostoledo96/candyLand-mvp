@@ -26,9 +26,9 @@ const AdminLayout: React.FC = () => {
           <NavLink to="/admin/categorias" className={({ isActive }) => `${styles.navLink} ${isActive ? styles.navLinkActive : ''}`}>
             Categorías
           </NavLink>
-          <span className={styles.navLinkDisabled} aria-disabled="true" title="Próximamente">
-            Pedidos <span className={styles.soon}>Próximamente</span>
-          </span>
+          <NavLink to="/admin/pedidos" className={({ isActive }) => `${styles.navLink} ${isActive ? styles.navLinkActive : ''}`}>
+            Pedidos
+          </NavLink>
         </nav>
       </aside>
       <div className={styles.main}>

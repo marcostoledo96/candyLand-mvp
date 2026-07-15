@@ -85,6 +85,24 @@ export async function reactivateAdminProduct(token, id) {
 
 /** @typedef {{ id:number, title:string, description?:string|null, priceCents:number, imageUrl?:string|null, hoverImageUrl?:string|null, stock:number, active:boolean, categoryId:number, category?:string|null }} AdminProduct */
 /** @typedef {{ id:number, name:string, slug:string, active:boolean }} AdminCategory */
+/** @typedef {'PENDING'|'SHIPPED'|'DELIVERED'|'CANCELLED'} AdminOrderStatus */
+/** @typedef {{ productId:number, productTitle:string|null, quantity:number, priceCents:number, subtotalCents:number }} AdminOrderItem */
+/** @typedef {{ id:number, name:string, phone:string, address:string, city:string, province:string, postalCode:string }} AdminOrderContact */
+/** @typedef {{ id:number, orderNumber:string, status:AdminOrderStatus, totalCents:number, paymentMethod:'CASH'|'TRANSFER'|null, paymentStatus:string|null, contact:AdminOrderContact|null, items:AdminOrderItem[], createdAt:string, updatedAt:string }} AdminOrder */
+
+export const ADMIN_ORDER_STATUSES = ['PENDING', 'SHIPPED', 'DELIVERED', 'CANCELLED'];
+
+export function formatAdminOrderStatus(status) {
+  return { PENDING: 'Pendiente', SHIPPED: 'Enviado', DELIVERED: 'Entregado', CANCELLED: 'Cancelado' }[status] ?? 'No disponible';
+}
+
+export function formatAdminOrderPayment(method) {
+  return { CASH: 'Efectivo', TRANSFER: 'Transferencia' }[method] ?? 'No disponible';
+}
+
+function assertAdminOrderStatus(status) {
+  if (!ADMIN_ORDER_STATUSES.includes(status)) throw new RangeError('Estado de pedido inválido');
+}
 
 export async function createAdminProduct(token, payload) {
   return adminRequest(token, '/api/admin/products', { method: 'POST', body: JSON.stringify(payload) });
@@ -108,4 +126,18 @@ export async function updateAdminCategory(token, id, payload) {
 
 export async function deleteAdminCategory(token, id) {
   return adminRequest(token, `/api/admin/categories/${id}`, { method: 'DELETE' });
+}
+
+export async function listAdminOrders(token, status) {
+  if (status !== undefined) assertAdminOrderStatus(status);
+  return adminRequest(token, `/api/admin/orders${status ? `?status=${encodeURIComponent(status)}` : ''}`);
+}
+
+export async function getAdminOrder(token, id) {
+  return adminRequest(token, `/api/admin/orders/${id}`);
+}
+
+export async function updateAdminOrderStatus(token, id, status) {
+  assertAdminOrderStatus(status);
+  return adminRequest(token, `/api/admin/orders/${id}`, { method: 'PATCH', body: JSON.stringify({ status }) });
 }

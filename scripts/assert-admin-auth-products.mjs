@@ -25,12 +25,12 @@ const app = read(src('App.tsx'));
 check('App.tsx has /admin/login route', /path=["'`]\/admin\/login["'`]/.test(app));
 check('App.tsx has /admin/productos route', /path=["'`]\/admin\/productos["'`]/.test(app));
 check('App.tsx has protected /admin/categorias page', /path=["'`]\/admin\/categorias["'`][\s\S]*?<RequireAdminAuth>[\s\S]*?<AdminLayout \/>[\s\S]*?<Route index element=\{<AdminCategoriesPage \/>\}/.test(app));
-check('App.tsx has protected /admin/pedidos redirect', /path=["'`]\/admin\/pedidos["'`][\s\S]*?<RequireAdminAuth>[\s\S]*?<Navigate to=["'`]\/admin\/productos["'`] replace \/>[\s\S]*?<\/RequireAdminAuth>/.test(app));
+check('App.tsx has protected /admin/pedidos page', /path=["'`]\/admin\/pedidos["'`][\s\S]*?<RequireAdminAuth>[\s\S]*?<AdminLayout \/>[\s\S]*?<Route index element=\{<AdminOrdersPage \/>\}/.test(app));
 check('App.tsx redirects /admin to /admin/productos', /\/admin["'`].*Navigate.*\/admin\/productos/.test(app.replace(/\s+/g, ' ')));
 check('App.tsx imports RequireAdminAuth', /RequireAdminAuth/.test(app));
 check('App.tsx imports AdminLayout', /import.*AdminLayout/.test(app));
 check('App.tsx imports AdminLogin', /import.*AdminLogin/.test(app));
-check('App.tsx lazy-imports AdminCategoriesPage', /AdminCategoriesPage.*lazy/.test(app));
+check('App.tsx lazy-imports admin categories and orders pages', /AdminCategoriesPage.*lazy/.test(app) && /AdminOrdersPage.*lazy/.test(app));
 check('App.tsx has an accessible lazy-route fallback', /<Suspense fallback=\{<p role="status">Cargando…<\/p>\}>/.test(app));
 
 const publicLayout = read(src('layout/Layout.tsx'));
@@ -47,8 +47,8 @@ if (existsSync(layoutPath)) {
   check('AdminLayout has "Cerrar sesión" button', /Cerrar sesión/.test(l));
   check('AdminLayout calls clearAdminToken on logout', /clearAdminToken/.test(l));
   check('AdminLayout uses Outlet', /Outlet/.test(l));
-  check('AdminLayout has aria-disabled nav', /aria-disabled/.test(l));
-  check('AdminLayout uses NavLink for Productos and Categorías', /NavLink/.test(l) && /\/admin\/productos/.test(l) && /\/admin\/categorias/.test(l));
+  check('AdminLayout has no remaining coming-soon admin nav', !/aria-disabled|Próximamente/.test(l));
+  check('AdminLayout uses NavLink for Productos, Categorías, and Pedidos', /NavLink/.test(l) && /\/admin\/productos/.test(l) && /\/admin\/categorias/.test(l) && /\/admin\/pedidos/.test(l));
 }
 const layoutCssPath = src('pages/Admin/AdminLayout.module.css');
 if (existsSync(layoutCssPath)) {
@@ -139,8 +139,22 @@ if (existsSync(categoriesPath)) {
 }
 if (existsSync(categoriesCssPath)) check('AdminCategoriesPage CSS is light-only and has focus-visible', !/prefers-color-scheme:\s*dark/.test(stripComments(read(categoriesCssPath))) && /focus-visible/.test(read(categoriesCssPath)));
 
+// --- AdminOrdersPage ---
+const ordersPath = src('pages/Admin/AdminOrdersPage.tsx');
+const ordersCssPath = src('pages/Admin/AdminOrdersPage.module.css');
+check('AdminOrdersPage exists', existsSync(ordersPath));
+if (existsSync(ordersPath)) {
+  const orders = read(ordersPath);
+  check('AdminOrdersPage uses list/detail/status API methods', /listAdminOrders/.test(orders) && /getAdminOrder/.test(orders) && /updateAdminOrderStatus/.test(orders));
+  check('AdminOrdersPage uses canonical statuses and native details', /ADMIN_ORDER_STATUSES/.test(orders) && /<details/.test(orders) && /<summary/.test(orders));
+  check('AdminOrdersPage has status, alert, and no out-of-scope actions', /role="status"/.test(orders) && /role="alert"/.test(orders) && !/WhatsApp|reembolso|refund|cancelar pedido/i.test(orders));
+  check('AdminOrdersPage does NOT import Header or Footer', !/import.*Header/.test(orders) && !/import.*Footer/.test(orders));
+  check('AdminOrdersPage never uses dangerouslySetInnerHTML', !/dangerouslySetInnerHTML/.test(orders));
+}
+if (existsSync(ordersCssPath)) check('AdminOrdersPage CSS is light-only and has focus-visible', !/prefers-color-scheme:\s*dark/.test(stripComments(read(ordersCssPath))) && /focus-visible/.test(read(ordersCssPath)));
+
 // --- Security: no console.log of token/sessionStorage ---
-const adminFiles = [layoutPath, loginPath, requirePath, listPath, formPath, categoriesPath, src('lib/adminApi.js'), src('lib/adminAuth.js')];
+const adminFiles = [layoutPath, loginPath, requirePath, listPath, formPath, categoriesPath, ordersPath, src('lib/adminApi.js'), src('lib/adminAuth.js')];
 let hasTokenLog = false;
 for (const f of adminFiles) {
   if (!existsSync(f)) continue;
@@ -154,6 +168,7 @@ const pkg = JSON.parse(read(join(root, 'package.json')));
 check('package.json has assert:admin-auth-products script', /assert:admin-auth-products/.test(JSON.stringify(pkg.scripts || {})));
 check('package.json has product form test/assert scripts', /test:admin-product-form/.test(JSON.stringify(pkg.scripts || {})) && /assert:admin-product-form/.test(JSON.stringify(pkg.scripts || {})));
 check('package.json has categories test/assert scripts', /test:admin-categories/.test(JSON.stringify(pkg.scripts || {})) && /assert:admin-categories/.test(JSON.stringify(pkg.scripts || {})));
+check('package.json has orders test/assert scripts', /test:admin-orders/.test(JSON.stringify(pkg.scripts || {})) && /assert:admin-orders/.test(JSON.stringify(pkg.scripts || {})));
 check('package.json dependencies count unchanged (9)', Object.keys(pkg.dependencies || {}).length === 9);
 check('package.json devDependencies count unchanged (11)', Object.keys(pkg.devDependencies || {}).length === 11);
 

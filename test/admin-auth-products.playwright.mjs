@@ -31,6 +31,25 @@ async (page) => {
     delayCategoryMutation: false,
     releaseCategoryMutation: null,
     categoryMutations: 0,
+    ordersStatus: 200,
+    delayOrders: false,
+    releaseOrders: null,
+    orderMutationStatus: 200,
+    delayOrderMutation: false,
+    releaseOrderMutation: null,
+    orderMutationResolvers: [],
+    orderMutations: 0,
+    lastOrderMutation: null,
+    orderDetailStatus: 200,
+    orderDetailGets: 0,
+    orderListRequests: [],
+    delayedOrderFilters: new Set(),
+    liveDelayedOrderFilters: new Set(),
+    orderListResolvers: [],
+    orders: [
+      { id: 11, orderNumber: 'CL-101', status: 'PENDING', totalCents: 1250, paymentMethod: 'CASH', paymentStatus: 'PENDING', contact: { id: 1, name: 'Ana', phone: '11-1111', address: 'Calle 1', city: 'CABA', province: 'Buenos Aires', postalCode: '1000' }, items: [{ productId: 1, productTitle: 'Gomitas', quantity: 2, priceCents: 625, subtotalCents: 1250 }] },
+      { id: 12, orderNumber: 'CL-102', status: 'SHIPPED', totalCents: 2400, paymentMethod: 'TRANSFER', paymentStatus: 'PENDING', contact: null, items: [] },
+    ],
     categories: [{ id: 1, name: 'Gomitas', slug: 'gomitas', active: true }],
     products: [
       { id: 1, title: 'Gomitas Dulces', priceCents: 1250, stock: 10, active: true, categoryId: 1, category: 'Gomitas' },
@@ -39,6 +58,18 @@ async (page) => {
     ],
   };
   const assert = (condition, message) => { if (!condition) throw new Error(message); };
+  // Each original runtime scenario belongs to exactly one deterministic batch.
+  // Set globalThis.__CANDYLAND_RUNTIME_BATCH__ before invoking this function.
+  const RUNTIME_BATCHES = Object.freeze({
+    'auth-products': [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14],
+    categories: [15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29],
+    'product-form': [30, 31, 32, 33, 34, 35, 36, 37, 38, 39, 40, 41, 42, 43, 44, 45, 46, 47, 48],
+    'orders-foundation': [49, 50, 51, 52, 53, 54, 55, 56],
+    'orders-races-failures': [57, 58, 59, 60, 61, 62, 63, 64, 65],
+  });
+  const runtimeBatch = globalThis.__CANDYLAND_RUNTIME_BATCH__ ?? page.url().match(/[?&]runtimeBatch=([^&]+)/)?.[1] ?? 'all';
+  assert(runtimeBatch === 'all' || Object.hasOwn(RUNTIME_BATCHES, runtimeBatch), `unknown runtime batch: ${runtimeBatch}`);
+  const shouldRun = (batch) => runtimeBatch === 'all' || runtimeBatch === batch;
   const json = (route, body, status = 200) => route.fulfill({ status, contentType: 'application/json', body: JSON.stringify(body) });
 
   await page.unroute('**/api/**');
@@ -48,12 +79,12 @@ async (page) => {
     // The explicit login/auth, category-error, and mutation-error scenarios
     // intentionally exercise these HTTP failures; every other console error fails.
     if (text.includes('401 (Unauthorized)') || msg.location().url.endsWith('/api/admin/me')) return;
-    if (msg.location().url.includes('/api/admin/categories')) return;
+    if (msg.location().url.includes('/api/admin/categories') || msg.location().url.includes('/api/admin/orders')) return;
     if (msg.location().url.includes('/api/admin/products')) return;
     errors.push(`${text} @ ${msg.location().url}`);
   });
   page.on('requestfailed', (request) => {
-    if (!request.url().endsWith('/api/admin/me') && !request.url().includes('/api/admin/categories')) errors.push(`request failed: ${request.url()}`);
+    if (!request.url().endsWith('/api/admin/me') && !request.url().includes('/api/admin/categories') && !request.url().includes('/api/admin/orders')) errors.push(`request failed: ${request.url()}`);
   });
   await page.route('**/favicon.ico', (route) => route.fulfill({ status: 204 }));
   await page.route('**/api/**', async (route) => {
@@ -76,6 +107,45 @@ async (page) => {
       state.productGets += 1;
       if (state.delayProducts) await new Promise((resolve) => { state.releaseProducts = resolve; });
       return json(route, state.productsStatus === 200 ? state.products : { error: 'Backend unavailable' }, state.productsStatus);
+    }
+    if (url.includes('/api/admin/orders')) {
+      const match = url.match(/\/api\/admin\/orders\/(\d+)$/);
+      if (request.method() === 'GET' && match) {
+        state.orderDetailGets += 1;
+        const order = state.orders.find((item) => item.id === Number(match[1]));
+        return json(route, state.orderDetailStatus === 200 ? (order ?? { error: 'Order not found' }) : { error: 'Detail unavailable' }, state.orderDetailStatus === 200 && order ? 200 : state.orderDetailStatus);
+      }
+      if (request.method() === 'GET') {
+        const status = /[?&]status=([^&]+)/.exec(url)?.[1] ?? '';
+        state.orderListRequests.push(status);
+        let orders = state.ordersStatus === 'empty' ? [] : state.orders.filter((item) => !status || item.status === status).map((item) => ({ ...item }));
+        if (state.delayOrders || state.delayedOrderFilters.has(status)) await new Promise((resolve) => {
+          state.releaseOrders = resolve;
+          state.orderListResolvers.push({ status, resolve });
+        });
+        if (state.liveDelayedOrderFilters.has(status)) orders = state.orders.filter((item) => !status || item.status === status).map((item) => ({ ...item }));
+        if (state.ordersStatus !== 200 && state.ordersStatus !== 'empty') {
+          const transient = state.ordersStatus === 'transient401';
+          return json(route, { error: transient ? 'Unable to verify account status' : 'Orders unavailable' }, transient ? 401 : state.ordersStatus);
+        }
+        return json(route, orders);
+      }
+      if (request.method() === 'PATCH' && match) {
+        state.orderMutations += 1;
+        if (state.delayOrderMutation) await new Promise((resolve) => {
+          state.releaseOrderMutation = resolve;
+          state.orderMutationResolvers.push(resolve);
+        });
+        if (state.orderMutationStatus === 'network') return route.abort('failed');
+        if (state.orderMutationStatus !== 200) {
+          const transient = state.orderMutationStatus === 'transient401';
+          return json(route, { error: transient ? 'Unable to verify account status' : state.orderMutationStatus === 404 ? 'Order not found' : state.orderMutationStatus === 400 ? 'Validation failed' : 'expired' }, transient ? 401 : state.orderMutationStatus);
+        }
+        const order = state.orders.find((item) => item.id === Number(match[1]));
+        state.lastOrderMutation = request.postDataJSON();
+        Object.assign(order, state.lastOrderMutation);
+        return json(route, order);
+      }
     }
     if (url.includes('/api/admin/categories')) {
       if (state.categoriesPageMode) {
@@ -141,7 +211,15 @@ async (page) => {
     }
     return json(route, { error: 'Unexpected mock route' }, 404);
   });
+  const signIn = async () => {
+    await page.goto('http://127.0.0.1:4182/admin/login');
+    await page.getByLabel('Email').fill('admin@candy');
+    await page.getByLabel('Contraseña').fill('secret');
+    await page.getByRole('button', { name: 'Ingresar' }).click();
+    await page.waitForURL('**/admin/productos');
+  };
   await page.setViewportSize({ width: 1280, height: 800 });
+  if (shouldRun('auth-products')) {
   await page.goto('http://127.0.0.1:4182/contacto');
   await page.evaluate(() => sessionStorage.clear());
   await page.getByRole('heading', { name: 'COMUNICATE CON NOSOTROS' }).waitFor();
@@ -167,10 +245,16 @@ async (page) => {
   await page.getByLabel('Email').fill('admin@candy');
   await page.getByLabel('Contraseña').fill('secret');
   await page.getByRole('button', { name: 'Ingresar' }).click();
-  await page.waitForURL('**/admin/productos');
+  await page.waitForURL('**/admin/pedidos');
+  await page.goto('http://127.0.0.1:4182/admin/productos');
+  await page.getByText('Gomitas Dulces', { exact: true }).waitFor();
+  } else {
+    await signIn();
+  }
 
   // AC-01..13: protected category route, list states, CRUD outcomes, shared
   // auth semantics, native dialog lifecycle, and narrow light-only layout.
+  if (shouldRun('categories')) {
   state.categoriesPageMode = true;
   state.delayCategoryList = true;
   const categoryLoad = page.goto('http://127.0.0.1:4182/admin/categorias');
@@ -258,11 +342,12 @@ async (page) => {
   await deleteDialog.getByRole('button', { name: 'Eliminar', exact: true }).click();
   assert((await deleteDialog.getByRole('alert').textContent()).includes('no encontrada'), 'missing delete error missing');
   state.categoryMutationStatus = 204;
-  await deleteDialog.getByRole('button', { name: 'Eliminar', exact: true }).click();
-  await deleteDialog.waitFor({ state: 'hidden' });
-  assert(await page.getByText('Pendiente', { exact: true }).count() === 0, '204 delete did not remove exact row');
-  const categoriesHeading = page.getByRole('heading', { name: 'Categorías' });
-  assert(await categoriesHeading.evaluate((node) => document.activeElement === node), '204 delete did not restore focus to the Categories heading');
+   await deleteDialog.getByRole('button', { name: 'Eliminar', exact: true }).click();
+   await deleteDialog.waitFor({ state: 'hidden' });
+   assert(await page.getByText('Pendiente', { exact: true }).count() === 0, '204 delete did not remove exact row');
+   const categoriesHeading = page.getByRole('heading', { name: 'Categorías' });
+   await page.waitForFunction(() => document.activeElement?.textContent === 'Categorías');
+   assert(await categoriesHeading.evaluate((node) => document.activeElement === node), '204 delete did not restore focus to the Categories heading');
   assert(await page.evaluate(() => document.activeElement !== document.body), '204 delete left focus on document body');
   await page.setViewportSize({ width: 390, height: 844 });
   assert(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth), '390px categories page has horizontal overflow');
@@ -281,9 +366,11 @@ async (page) => {
   await page.waitForURL('**/admin/categorias');
   state.categoriesPageMode = false;
   await page.goto('http://127.0.0.1:4182/admin/productos');
+  }
 
   // Scope every form interaction to the open dialog: a just-closed native dialog
   // can remain mounted until React commits its parent state update.
+  if (shouldRun('product-form')) {
   const productDialog = page.locator('dialog[open]');
 
   // APF-04/05/06: category loading, empty, and retryable error states block saves.
@@ -426,11 +513,211 @@ async (page) => {
   await page.keyboard.press('Escape');
   await page.getByText('admin@candy', { exact: true }).waitFor();
   assert(await page.getByText('admin@candy', { exact: true }).isVisible(), 'AdminLayout did not display authenticated email');
-  for (const path of ['pedidos']) {
-    await page.goto(`http://127.0.0.1:4182/admin/${path}`);
-    await page.waitForURL('**/admin/productos');
+  }
+  // AO-01..10: protected orders route, list states, detail, status updates,
+  // failure retention, central expiry, and narrow presentation.
+  let filterSelect;
+  let orderSelect;
+  let orderSave;
+  if (shouldRun('orders-foundation')) {
+  state.delayOrders = true;
+  const ordersLoad = page.goto('http://127.0.0.1:4182/admin/pedidos');
+  await page.getByText('Cargando pedidos…').waitFor();
+  assert(await page.getByRole('status').getAttribute('aria-live') === 'polite', 'orders loading is not announced');
+  assert(await page.getByRole('link', { name: 'Pedidos' }).isVisible(), 'orders navigation is not enabled');
+  assert(await page.locator('footer').count() === 0, 'orders route rendered public chrome');
+  state.delayOrders = false;
+  state.releaseOrders?.();
+  await ordersLoad;
+  await page.getByText('CL-101', { exact: true }).waitFor();
+  assert(await page.getByText('Efectivo', { exact: true }).isVisible(), 'cash payment was not formatted');
+  assert(await page.getByText('Transferencia', { exact: true }).isVisible(), 'transfer payment was not formatted');
+
+   filterSelect = page.locator('select').first();
+  await filterSelect.selectOption('SHIPPED');
+  await page.getByText('CL-102', { exact: true }).waitFor();
+  assert(await page.getByText('CL-101', { exact: true }).count() === 0, 'status filter did not constrain list');
+  state.ordersStatus = 500;
+  await filterSelect.selectOption('PENDING');
+  await page.getByRole('alert').waitFor();
+  state.ordersStatus = 200;
+  await page.getByRole('button', { name: 'Reintentar' }).click();
+  await page.getByText('CL-101', { exact: true }).waitFor();
+  assert(await page.getByText('CL-102', { exact: true }).count() === 0, 'retry did not retain selected status filter');
+  state.ordersStatus = 'empty';
+  await page.reload();
+  await page.getByText('No hay pedidos').waitFor();
+  state.ordersStatus = 200;
+   await page.reload();
+   state.orderDetailStatus = 500;
+   const detailGetsBeforeRetry = state.orderDetailGets;
+   await page.getByText('CL-101', { exact: true }).click();
+   await page.getByRole('button', { name: 'Reintentar detalle' }).waitFor();
+   state.orderDetailStatus = 200;
+   await page.getByRole('button', { name: 'Reintentar detalle' }).click();
+   await page.getByText('Calle 1, CABA, Buenos Aires, 1000').waitFor();
+   assert(state.orderDetailGets === detailGetsBeforeRetry + 2, 'detail retry did not issue a second GET');
+   assert(await page.getByText('Gomitas × 2').isVisible(), 'order detail did not render item content');
+
+    orderSelect = page.getByLabel('Estado del pedido CL-101');
+   await filterSelect.selectOption('');
+   await page.getByText('CL-102', { exact: true }).waitFor();
+   await page.getByText('CL-102', { exact: true }).click();
+   const orderSelectTwo = page.getByLabel('Estado del pedido CL-102');
+    orderSave = orderSelect.locator('xpath=ancestor::div[1]').getByRole('button');
+   const orderSaveTwo = orderSelectTwo.locator('xpath=ancestor::div[1]').getByRole('button');
+   await orderSelect.selectOption('DELIVERED');
+   await orderSelectTwo.selectOption('DELIVERED');
+   state.delayOrderMutation = true;
+   const mutationBefore = state.orderMutations;
+   await orderSave.click();
+   await page.getByRole('button', { name: 'Guardando…' }).waitFor();
+   assert(await orderSelect.isDisabled(), 'first pending order select was not disabled');
+   assert(await orderSave.isDisabled(), 'first pending order submit was not disabled');
+   await orderSave.click({ force: true });
+   assert(state.orderMutations === mutationBefore + 1, 'same order pending update sent a duplicate request');
+   await orderSaveTwo.click();
+   await page.waitForFunction(() => [...document.querySelectorAll('button')].filter((button) => button.textContent === 'Guardando…').length === 2);
+   assert(state.orderMutations === mutationBefore + 2, 'second order update did not start while first was pending');
+   assert(await orderSelect.isDisabled() && await orderSelectTwo.isDisabled(), 'overlapping updates did not keep both orders disabled');
+   state.orderMutationResolvers.shift()?.();
+   await page.getByRole('button', { name: 'Guardar estado' }).waitFor();
+   assert(await orderSelectTwo.isDisabled(), 'first completion cleared the other order pending state');
+   state.orderMutationResolvers.shift()?.();
+   state.delayOrderMutation = false;
+    await page.locator('summary').filter({ hasText: 'Entregado' }).waitFor();
+    assert(state.lastOrderMutation?.status === 'DELIVERED', 'order update did not send canonical status');
   }
 
+  if (shouldRun('orders-races-failures')) {
+    if (runtimeBatch === 'orders-races-failures') {
+      await page.goto('http://127.0.0.1:4182/admin/pedidos');
+      await page.getByText('CL-101', { exact: true }).waitFor();
+      filterSelect = page.locator('select').first();
+      await page.locator('details').filter({ hasText: 'CL-101' }).evaluate((detail) => { detail.open = true; });
+      orderSelect = page.getByLabel('Estado del pedido CL-101');
+      orderSave = orderSelect.locator('xpath=ancestor::div[1]').getByRole('button');
+    }
+
+    state.orders[0].status = 'PENDING';
+   state.orders[1].status = 'SHIPPED';
+
+   state.delayedOrderFilters.add('PENDING');
+   await filterSelect.selectOption('PENDING');
+   await page.waitForFunction(() => document.querySelector('select')?.value === 'PENDING');
+   await filterSelect.selectOption('SHIPPED');
+   await page.getByText('CL-102', { exact: true }).waitFor();
+   state.orderListResolvers.find((item) => item.status === 'PENDING')?.resolve();
+   state.delayedOrderFilters.delete('PENDING');
+   await page.waitForTimeout(20);
+   assert(await page.getByText('CL-101', { exact: true }).count() === 0, 'stale filtered response replaced the newer filter result');
+
+   await filterSelect.selectOption('PENDING');
+   await page.getByText('CL-101', { exact: true }).waitFor();
+   await page.locator('details').filter({ hasText: 'CL-101' }).evaluate((detail) => { detail.open = true; });
+   await orderSelect.waitFor({ state: 'attached' });
+   await orderSelect.selectOption('DELIVERED');
+   await page.getByRole('button', { name: 'Guardar estado' }).click();
+    await page.getByText('No hay pedidos').waitFor();
+    assert(await page.getByText('CL-101', { exact: true }).count() === 0, 'updated order remained visible outside the active filter');
+
+    // AO-03 ordering: PATCH completion must reconcile against the latest filter,
+    // even when that filter changed while the request was pending.
+    const orderingErrors = [];
+    state.orders[0].status = 'PENDING';
+    state.delayOrderMutation = true;
+    await filterSelect.selectOption('SHIPPED');
+    await page.getByText('CL-102', { exact: true }).waitFor();
+    await filterSelect.selectOption('PENDING');
+    await page.getByText('CL-101', { exact: true }).waitFor();
+    await page.getByText('CL-101', { exact: true }).click();
+    await orderSelect.selectOption('DELIVERED');
+    await orderSave.click();
+    await page.getByRole('button', { name: 'Guardando…' }).waitFor();
+    await filterSelect.selectOption('DELIVERED');
+    await page.getByText('No hay pedidos').waitFor();
+    state.releaseOrderMutation?.();
+    state.delayOrderMutation = false;
+    await page.waitForTimeout(20);
+    if (await page.locator('summary').filter({ hasText: 'Entregado' }).count() !== 1) orderingErrors.push('matching filter change during PATCH omitted the updated order');
+
+    // AO-03 ordering: a list snapshot captured before PATCH must never restore
+    // the status that PATCH has already replaced.
+    state.orders[0].status = 'PENDING';
+    await filterSelect.selectOption('PENDING');
+    await page.getByText('CL-101', { exact: true }).waitFor();
+    await page.getByText('CL-101', { exact: true }).click();
+    await orderSelect.selectOption('DELIVERED');
+    const pendingLists = state.orderListResolvers.length;
+    state.delayedOrderFilters.add('');
+    await filterSelect.selectOption('');
+    await page.waitForTimeout(20);
+    assert(state.orderListResolvers.length === pendingLists + 1, 'pre-mutation list request did not start');
+    await orderSave.click();
+    await page.locator('summary').filter({ hasText: 'Entregado' }).waitFor();
+    state.orderListResolvers.at(-1)?.resolve();
+    state.delayedOrderFilters.delete('');
+    await page.waitForTimeout(20);
+     if (await page.locator('summary').filter({ hasText: 'Pendiente' }).count() !== 0) orderingErrors.push('pre-mutation list snapshot restored the stale order');
+
+     // A list started after PATCH must remain valid when PATCH completes first.
+     state.orders[0].status = 'PENDING';
+     state.orders[1].status = 'DELIVERED';
+     await filterSelect.selectOption('PENDING');
+     await page.getByText('CL-101', { exact: true }).waitFor();
+     await page.locator('details').filter({ hasText: 'CL-101' }).evaluate((detail) => { detail.open = true; });
+     await orderSelect.waitFor({ state: 'attached' });
+     await orderSelect.selectOption('DELIVERED');
+     state.delayOrderMutation = true;
+     await orderSave.click();
+     await page.getByRole('button', { name: 'Guardando…' }).waitFor();
+     state.delayedOrderFilters.add('DELIVERED');
+     state.liveDelayedOrderFilters.add('DELIVERED');
+     const newerLists = state.orderListResolvers.length;
+     await filterSelect.selectOption('DELIVERED');
+     await page.waitForTimeout(20);
+     assert(state.orderListResolvers.length === newerLists + 1, 'newer filter request did not start while PATCH was pending');
+     state.releaseOrderMutation?.();
+     state.delayOrderMutation = false;
+     await page.getByRole('button', { name: 'Guardar estado' }).waitFor();
+     state.orderListResolvers.at(-1)?.resolve();
+     state.delayedOrderFilters.delete('DELIVERED');
+     await page.getByText('CL-102', { exact: true }).waitFor();
+     await page.getByText('CL-101', { exact: true }).waitFor();
+     state.liveDelayedOrderFilters.delete('DELIVERED');
+     if (orderingErrors.length) throw new Error(orderingErrors.join(' | '));
+
+   state.orders[0].status = 'DELIVERED';
+   state.orders[1].status = 'SHIPPED';
+   await filterSelect.selectOption('');
+   await page.getByText('CL-101', { exact: true }).waitFor();
+   await page.locator('details').filter({ hasText: 'CL-101' }).evaluate((detail) => { detail.open = true; });
+   await orderSelect.waitFor({ state: 'attached' });
+
+   for (const status of [400, 404, 'network', 'transient401']) {
+     state.orderMutationStatus = status;
+     await orderSelect.selectOption('PENDING');
+     await orderSave.click();
+    await page.getByRole('alert').waitFor();
+    assert(await orderSelect.inputValue() === 'PENDING', `${status} did not preserve draft`);
+    assert(await page.locator('summary').filter({ hasText: 'Entregado' }).count() > 0, `${status} changed returned order before success`);
+  }
+  state.orderMutationStatus = 200;
+  await page.setViewportSize({ width: 390, height: 844 });
+  assert(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth), '390px orders page has horizontal overflow');
+   state.orderMutationStatus = 401;
+   await orderSave.click();
+  await page.waitForURL('**/admin/login');
+  assert(await page.evaluate(() => sessionStorage.getItem('admin_token') === null), 'genuine order 401 retained session');
+  state.orderMutationStatus = 200;
+  await page.getByLabel('Email').fill('admin@candy');
+  await page.getByLabel('Contraseña').fill('secret');
+  await page.getByRole('button', { name: 'Ingresar' }).click();
+  await page.waitForURL('**/admin/pedidos');
+  await page.goto('http://127.0.0.1:4182/admin/productos');
+  }
+
+  if (shouldRun('auth-products')) {
   state.meNetworkFailure = true;
   await page.reload();
   await page.getByRole('button', { name: 'Reintentar' }).waitFor();
@@ -512,6 +799,13 @@ async (page) => {
   await page.getByRole('button', { name: 'Ingresar' }).click();
   await page.waitForURL('**/admin/productos');
   await assert(await page.locator('aside').evaluate((node) => getComputedStyle(node).flexDirection === 'row'), '390px sidebar did not collapse');
+  }
   assert(errors.length === 0, `console/network errors: ${errors.join(' | ')}`);
-  return { scenarios: 49, consoleErrors: errors.length };
+  const executedBatches = runtimeBatch === 'all' ? Object.keys(RUNTIME_BATCHES) : [runtimeBatch];
+  return {
+    batch: runtimeBatch,
+    batches: Object.fromEntries(executedBatches.map((name) => [name, RUNTIME_BATCHES[name].length])),
+    scenarios: executedBatches.reduce((total, name) => total + RUNTIME_BATCHES[name].length, 0),
+    consoleErrors: errors.length,
+  };
 }

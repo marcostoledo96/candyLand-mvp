@@ -264,11 +264,87 @@ The page MUST reuse central admin API authentication semantics: a genuine 401 MU
 
 This slice MUST NOT change the product form, orders UI, backend routes, schema, auth model, dependencies, bulk actions, search, pagination, activation mutation, or permanent product deletion.
 
+## ADDED Requirements (Admin Orders UI Slice)
+
+### Requirement: Protected Orders Route and Navigation
+
+The system MUST expose `/admin/pedidos` as a protected route in the existing admin shell. The shell MUST enable its Orders navigation link and MUST NOT show a coming-soon placeholder. Unauthenticated access MUST follow the existing admin-session redirect behavior.
+
+#### Scenario: AO-01 Authorized orders route
+- GIVEN an authenticated admin
+- WHEN they select Orders or navigate to `/admin/pedidos`
+- THEN the orders page MUST render in the admin shell without public Header or Footer.
+
+### Requirement: Order List, Filter, and Summary
+
+The page MUST show loading, retryable error, empty, and success states. It MUST offer no filter or only `PENDING`, `SHIPPED`, `DELIVERED`, and `CANCELLED`; the selected filter MUST be retained for retry. Each returned order MUST show order number, contact name, total, manual payment method, and order status.
+
+#### Scenario: AO-02 List state transitions
+- GIVEN the order request is pending, fails, returns `[]`, or succeeds
+- WHEN the page renders
+- THEN it MUST announce loading, offer retry for a non-auth failure, show an empty state, or render the returned orders.
+
+#### Scenario: AO-03 Allowed status filtering
+- GIVEN an admin selects an allowed status or no filter
+- WHEN the list is requested or retried
+- THEN the request MUST use only that optional status and MUST NOT send an unknown value.
+
+#### Scenario: AO-04 Manual-payment summary
+- GIVEN an order has `CASH` or `TRANSFER` payment data
+- WHEN its summary renders
+- THEN it MUST identify it as Efectivo or Transferencia and MUST NOT offer online-payment actions.
+
+### Requirement: Accessible Order Detail
+
+The system MUST provide an accessible detail view for a listed order containing item title, quantity, unit price, subtotal, contact name and phone, and delivery address (address, city, province, postal code). It MUST expose the order number, total, payment method/status, and canonical order status.
+
+#### Scenario: AO-05 Review order detail
+- GIVEN an order is listed
+- WHEN an admin opens its detail
+- THEN all available items, contact, and address fields MUST be readable by keyboard and assistive technology.
+
+### Requirement: Allowed Status Updates and Safe Failures
+
+The system MUST allow updates only to `PENDING`, `SHIPPED`, `DELIVERED`, or `CANCELLED`, using the existing `PATCH /api/admin/orders/:id` contract. It MUST prevent duplicate updates while one is pending and MUST NOT change the displayed order data until a successful response. A `400`, `404`, transient verification `401`, or network failure MUST retain the existing order data, selection/detail, and visible error; a genuine `401` MUST preserve existing centralized session-expiry behavior.
+
+#### Scenario: AO-06 Update with an allowed status
+- GIVEN a listed order and an allowed target status
+- WHEN the admin submits the update
+- THEN the system MUST show pending feedback and apply the returned order status only after success.
+
+#### Scenario: AO-07 Reject invalid status
+- GIVEN the status request receives `400`
+- WHEN the error is returned
+- THEN the current order status MUST remain unchanged and the validation error MUST be visible.
+
+#### Scenario: AO-08 Missing order
+- GIVEN the status request receives `404`
+- WHEN the error is returned
+- THEN no other order MUST change and a visible not-found error MUST remain with the existing list data.
+
+#### Scenario: AO-09 Authentication or network failure
+- GIVEN an update receives a genuine `401`, transient verification `401`, or network failure
+- WHEN the response is handled
+- THEN genuine `401` MUST redirect through the shared session flow, while the other failures MUST retain data and offer retryable feedback.
+
+### Requirement: Orders Presentation Boundaries
+
+The page MUST be light-only, responsive, keyboard-operable, visibly focused, and expose labelled controls plus live status/error feedback. It MUST NOT add cancellation/refund workflows, payment integration, WhatsApp, product detail, backend/schema/auth/email/stock changes, category/product changes, bulk actions, search, pagination, analytics, or export.
+
+#### Scenario: AO-10 Narrow accessible presentation
+- GIVEN a keyboard user or a narrow viewport
+- WHEN they filter, inspect detail, retry, or update an order
+- THEN all controls MUST remain usable with visible focus and without a dark-mode variant.
+
+## Admin Orders UI Slice Boundaries
+
+This slice uses the existing canonical order statuses `PENDING`, `SHIPPED`, `DELIVERED`, and `CANCELLED` and manual payment methods `CASH` and `TRANSFER`. It MUST NOT introduce a separate cancellation, refund, or payment-state transition beyond the backend status allowlist.
+
 ## Result Contract
 
 - **status**: `success`
-- **executive_summary**: Formal requirements AC-01 through AC-13 define the protected, accessible category-management UI while preserving the prior backend and product-form requirements.
+- **executive_summary**: Formal requirements AO-01 through AO-10 define a protected, accessible admin orders UI that consumes the existing order contracts without backend change.
 - **artifacts**: `openspec/changes/2026-06-candyland-v2/specs/admin-productos/spec.md`; Engram `sdd/2026-06-candyland-v2/spec`
 - **next_recommended**: `sdd-design`
-- **risks**: Existing category `active` is derived response data only; mutation must remain `{ name }`.
-- **skill_resolution**: `paths-injected` — frontend-design, playwright-best-practices, typescript-advanced-types, karpathy-guidelines, and ponytail; shared SDD/OpenSpec conventions.
+- **risks**: Existing list DTOs may omit optional payment/contact fields; the UI must render unavailable values safely. The backend's transient verification `401` must remain distinguishable from genuine expiry.
+- **skill_resolution**: requested skills loaded — frontend-design, playwright-best-practices, typescript-advanced-types, karpathy-guidelines, ponytail; shared SDD/OpenSpec conventions.
