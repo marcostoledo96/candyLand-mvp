@@ -5,7 +5,7 @@
 - `DECISIONES_CERRADAS.md` — decisiones de producto/arquitectura ya cerradas.
 - `DEPLOY_RAILWAY_VERCEL.md` — Railway backend + PostgreSQL y Vercel frontend; incluye variables de email.
 - `EMAILS_PEDIDOS.md` — servicio de emails de pedidos: noop por defecto y Resend vía `fetch` sin SDK.
-- `AUTENTICACION.md` — auth admin: JWT sessionStorage, `/api/admin/me` bootstrap, 401 clear/redirect, logout. Slice parcial (auth + productos list/deactivate/reactivate; form + categorías + pedidos diferidos).
+- `AUTENTICACION.md` — auth admin: JWT sessionStorage, `/api/admin/me` bootstrap, 401 clear/redirect, logout. Slice parcial (auth + productos + categorías; pedidos diferidos).
 
 ## Trabajo asistido por IA
 

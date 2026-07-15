@@ -24,12 +24,13 @@ console.log('assert-admin-auth-products: start');
 const app = read(src('App.tsx'));
 check('App.tsx has /admin/login route', /path=["'`]\/admin\/login["'`]/.test(app));
 check('App.tsx has /admin/productos route', /path=["'`]\/admin\/productos["'`]/.test(app));
-check('App.tsx has protected /admin/categorias redirect', /path=["'`]\/admin\/categorias["'`][\s\S]*?<RequireAdminAuth>[\s\S]*?<Navigate to=["'`]\/admin\/productos["'`] replace \/>[\s\S]*?<\/RequireAdminAuth>/.test(app));
+check('App.tsx has protected /admin/categorias page', /path=["'`]\/admin\/categorias["'`][\s\S]*?<RequireAdminAuth>[\s\S]*?<AdminLayout \/>[\s\S]*?<Route index element=\{<AdminCategoriesPage \/>\}/.test(app));
 check('App.tsx has protected /admin/pedidos redirect', /path=["'`]\/admin\/pedidos["'`][\s\S]*?<RequireAdminAuth>[\s\S]*?<Navigate to=["'`]\/admin\/productos["'`] replace \/>[\s\S]*?<\/RequireAdminAuth>/.test(app));
 check('App.tsx redirects /admin to /admin/productos', /\/admin["'`].*Navigate.*\/admin\/productos/.test(app.replace(/\s+/g, ' ')));
 check('App.tsx imports RequireAdminAuth', /RequireAdminAuth/.test(app));
 check('App.tsx imports AdminLayout', /import.*AdminLayout/.test(app));
 check('App.tsx imports AdminLogin', /import.*AdminLogin/.test(app));
+check('App.tsx lazy-imports AdminCategoriesPage', /AdminCategoriesPage.*lazy/.test(app));
 check('App.tsx has an accessible lazy-route fallback', /<Suspense fallback=\{<p role="status">Cargando…<\/p>\}>/.test(app));
 
 const publicLayout = read(src('layout/Layout.tsx'));
@@ -47,6 +48,7 @@ if (existsSync(layoutPath)) {
   check('AdminLayout calls clearAdminToken on logout', /clearAdminToken/.test(l));
   check('AdminLayout uses Outlet', /Outlet/.test(l));
   check('AdminLayout has aria-disabled nav', /aria-disabled/.test(l));
+  check('AdminLayout uses NavLink for Productos and Categorías', /NavLink/.test(l) && /\/admin\/productos/.test(l) && /\/admin\/categorias/.test(l));
 }
 const layoutCssPath = src('pages/Admin/AdminLayout.module.css');
 if (existsSync(layoutCssPath)) {
@@ -121,8 +123,24 @@ if (existsSync(formPath)) {
 }
 if (existsSync(formCssPath)) check('AdminProductForm CSS is light-only and has focus-visible', !/prefers-color-scheme:\s*dark/.test(stripComments(read(formCssPath))) && /focus-visible/.test(read(formCssPath)));
 
+// --- AdminCategoriesPage ---
+const categoriesPath = src('pages/Admin/AdminCategoriesPage.tsx');
+const categoriesCssPath = src('pages/Admin/AdminCategoriesPage.module.css');
+check('AdminCategoriesPage exists', existsSync(categoriesPath));
+if (existsSync(categoriesPath)) {
+  const categories = read(categoriesPath);
+  check('AdminCategoriesPage uses category list and CRUD methods', /listAdminCategories/.test(categories) && /createAdminCategory/.test(categories) && /updateAdminCategory/.test(categories) && /deleteAdminCategory/.test(categories));
+  check('AdminCategoriesPage uses native dialogs without window.confirm', /<dialog/.test(categories) && /showModal/.test(categories) && !/window\.confirm/.test(categories));
+  check('AdminCategoriesPage has error/live feedback and no active mutation', /role="alert"/.test(categories) && /aria-live/.test(categories) && !/active\s*:/.test(categories));
+  check('AdminCategoriesPage announces loading as a busy live status', /role="status"\s+aria-live="polite"\s+aria-busy="true"/.test(categories));
+  check('AdminCategoriesPage restores successful-delete focus to the page heading', /headingRef\.current\?\.focus\(\)/.test(categories));
+  check('AdminCategoriesPage does NOT import Header or Footer', !/import.*Header/.test(categories) && !/import.*Footer/.test(categories));
+  check('AdminCategoriesPage never uses dangerouslySetInnerHTML', !/dangerouslySetInnerHTML/.test(categories));
+}
+if (existsSync(categoriesCssPath)) check('AdminCategoriesPage CSS is light-only and has focus-visible', !/prefers-color-scheme:\s*dark/.test(stripComments(read(categoriesCssPath))) && /focus-visible/.test(read(categoriesCssPath)));
+
 // --- Security: no console.log of token/sessionStorage ---
-const adminFiles = [layoutPath, loginPath, requirePath, listPath, formPath, src('lib/adminApi.js'), src('lib/adminAuth.js')];
+const adminFiles = [layoutPath, loginPath, requirePath, listPath, formPath, categoriesPath, src('lib/adminApi.js'), src('lib/adminAuth.js')];
 let hasTokenLog = false;
 for (const f of adminFiles) {
   if (!existsSync(f)) continue;
@@ -135,6 +153,7 @@ check('No console.log/error of token/sessionStorage values', !hasTokenLog);
 const pkg = JSON.parse(read(join(root, 'package.json')));
 check('package.json has assert:admin-auth-products script', /assert:admin-auth-products/.test(JSON.stringify(pkg.scripts || {})));
 check('package.json has product form test/assert scripts', /test:admin-product-form/.test(JSON.stringify(pkg.scripts || {})) && /assert:admin-product-form/.test(JSON.stringify(pkg.scripts || {})));
+check('package.json has categories test/assert scripts', /test:admin-categories/.test(JSON.stringify(pkg.scripts || {})) && /assert:admin-categories/.test(JSON.stringify(pkg.scripts || {})));
 check('package.json dependencies count unchanged (9)', Object.keys(pkg.dependencies || {}).length === 9);
 check('package.json devDependencies count unchanged (11)', Object.keys(pkg.devDependencies || {}).length === 11);
 
