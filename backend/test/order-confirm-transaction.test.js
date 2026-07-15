@@ -84,6 +84,8 @@ require.cache['__stub_email__'] = {
 
 process.env.JWT_SECRET = process.env.JWT_SECRET || 'test-secret';
 process.env.EMAIL_PROVIDER = process.env.EMAIL_PROVIDER || 'noop';
+const savedBankEnv = Object.fromEntries(['BANK_ALIAS', 'BANK_CBU', 'BANK_TITULAR'].map((key) => [key, process.env[key]]));
+Object.assign(process.env, { BANK_ALIAS: 'test.alias', BANK_CBU: '1234567890123456789012', BANK_TITULAR: 'Test Holder' });
 const app = require('../app');
 
 function test(name, fn) {
@@ -316,6 +318,22 @@ async function run() {
     assert.equal(calls.orderCreate[0].data.payment.create.method, 'TRANSFER');
   });
 
+  reset();
+  seedActiveCart('stale-transfer', [{ id: 71, title: 'Stale', price: 100, qty: 1, stock: 5 }], 'transferencia');
+  await test('2.5d stale transfer rejected when bank settings no longer enable it; no side effects', async () => {
+    delete process.env.BANK_ALIAS;
+    delete process.env.BANK_CBU;
+    delete process.env.BANK_TITULAR;
+    const r = await postJson('stale-transfer');
+    assert.equal(r.status, 400);
+    assert.equal(r.body.error, 'Método de pago no disponible');
+    assert.equal(calls.updateMany.length, 0);
+    assert.equal(calls.orderCreate.length, 0);
+    assert.equal(calls.cartItemDeleteMany.length, 0);
+    assert.equal(emailCalls.sendOrderConfirmationEmail, 0);
+    Object.assign(process.env, { BANK_ALIAS: 'test.alias', BANK_CBU: '1234567890123456789012', BANK_TITULAR: 'Test Holder' });
+  });
+
   // 2.6 Non-positive quantity (0/negative/float): 400; no updateMany call
   reset();
   carts.set('zeroqty', {
@@ -510,4 +528,6 @@ async function run() {
   }
 }
 
-run();
+run().finally(() => {
+  for (const [key, value] of Object.entries(savedBankEnv)) value === undefined ? delete process.env[key] : process.env[key] = value;
+});

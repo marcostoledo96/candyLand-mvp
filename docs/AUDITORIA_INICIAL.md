@@ -1,5 +1,7 @@
 # Auditoría inicial — CandyLand v2
 
+> **Historical snapshot.** This audit records the repository state on 2026-06-29. It is not rewritten as current-state documentation; use `DEPLOY_RAILWAY_VERCEL.md` and the Production Deploy QA OpenSpec slice for the current deployment contract.
+
 > Fecha: 2026-06-29  
 > Rama: `docs/auditoria-inicial-candyland-v2`  
 > Alcance: frontend, backend, API, Prisma, deploy, documentación.

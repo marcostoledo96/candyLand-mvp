@@ -14,21 +14,7 @@ Copiá `.env.example` a `.env` y completá los valores. Nunca commitees `.env`.
 
 Variables esperadas (ver `backend/AGENTS.md` y `docs/DEPLOY_RAILWAY_VERCEL.md` para el detalle):
 
-```env
-NODE_ENV=production
-PORT=5050
-HOST=0.0.0.0
-DATABASE_URL=postgresql://...
-CORS_ORIGIN=https://candy-land-mvp.vercel.app,http://localhost:5173
-JWT_SECRET=...
-BANK_ALIAS=...
-BANK_CBU=...
-BANK_TITULAR=...
-EMAIL_PROVIDER=resend
-RESEND_API_KEY=...
-MAIL_FROM=...
-MAIL_TO=...
-```
+`NODE_ENV`, `PORT`, `HOST`, `DATABASE_URL`, `CORS_ORIGIN`, `JWT_SECRET`, `BANK_ALIAS`, `BANK_CBU`, `BANK_TITULAR`, `EMAIL_PROVIDER`, `RESEND_API_KEY`, `MAIL_FROM`, and `MAIL_TO` are the supported variable names. Values belong only in the provider or local ignored environment file.
 
 ## Cómo correrlo local
 1. `npm install`
@@ -67,10 +53,10 @@ Algunos endpoints de esta lista son objetivo v2 y todavía pueden no existir en 
 
 ## Deploy (Railway)
 - Root Directory: `backend`.
-- Build: `npm install --include=dev && npx prisma generate` (Prisma CLI está en `devDependencies`; el build la necesita para generar el cliente).
-- Start: `npm start`.
-- Variables mínimas: `DATABASE_URL`, `PORT` y `HOST=0.0.0.0`.
-- Migraciones: `npx prisma migrate deploy` antes del primer seed y en cada deploy con migraciones pendientes.
-- Seed: manual y seguro; no automatizar en cada deploy.
+- Config File: root `/railway.json` (an approved Railway dashboard setting; the path is absolute and does not follow Root Directory).
+- Build: `npm ci --include=dev && npm run prisma:generate`.
+- Pre-deploy: `npx prisma migrate deploy`; it must complete before `npm start` can promote the new server.
+- Start: `npm start`; health check: `GET /api/health`.
+- Do not run `prisma db push` or seed during build/start. Migration, seed, provider settings, and rollback execution require separate production authorization.
 
 Ver `docs/DEPLOY_RAILWAY_VERCEL.md` para el checklist completo.
