@@ -3,7 +3,7 @@ import { useNavigate } from "react-router-dom";
 import { useCart } from "../../context/CartContext";
 import styles from "./Checkout.module.css";
 import { CheckoutApiError, ConfirmOrderResponse, postConfirmOrder } from "../../lib/api";
-import { classifyCheckoutFailure, confirmationTransition, getConfirmationAttempt, isCompleteConfirmResponse, shouldClearCheckout } from "../../lib/checkout.js";
+import { classifyCheckoutFailure, clearCartMutationLockForCart, confirmationTransition, getConfirmationAttempt, isCompleteConfirmResponse, lockConfirmationAttempt, shouldClearCheckout } from "../../lib/checkout.js";
 
 type ConfirmationState = { state: "ready" | "pending" | "preDispatch" | "rejected" | "succeeded"; order?: ConfirmOrderResponse };
 
@@ -42,6 +42,7 @@ const Confirmation = () => {
   };
 
   const clearSuccessfulCheckout = () => {
+    clearCartMutationLockForCart(localStorage, attempt?.cartId);
     clearCart();
     try {
       ["checkoutData", "paymentMethod", "checkoutBank", "checkoutConfirmation", "checkoutConfirmState", "orderNumber"].forEach((key) => localStorage.removeItem(key));
@@ -61,21 +62,25 @@ const Confirmation = () => {
         clearSuccessfulCheckout();
         return;
       }
+      try { localStorage.setItem("checkoutMutationLock", JSON.stringify(lockConfirmationAttempt(attempt))); } catch {}
       setConfirmation({ state: "rejected" });
       focusMessage("No pudimos verificar el resultado de tu pedido. Conservamos tu carrito para que puedas reintentar.");
     } catch (error) {
       const failure = error instanceof CheckoutApiError ? error.failure : { kind: "transport" as const };
       const result = classifyCheckoutFailure(failure);
       if (failure.kind === "pre-dispatch") {
+        clearCartMutationLockForCart(localStorage, attempt?.cartId);
         setConfirmation(confirmationTransition(pending, { type: "preDispatch" }) as ConfirmationState);
         focusMessage(result.message);
         return;
       }
       if (failure.kind === "http") {
+        clearCartMutationLockForCart(localStorage, attempt?.cartId);
         setConfirmation(confirmationTransition(pending, { type: "reject" }) as ConfirmationState);
         focusMessage(result.message);
         return;
       }
+      try { localStorage.setItem("checkoutMutationLock", JSON.stringify(lockConfirmationAttempt(attempt))); } catch {}
       setConfirmation(confirmationTransition(pending, { type: "reject" }) as ConfirmationState);
       focusMessage(result.message);
     }

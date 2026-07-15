@@ -1,10 +1,13 @@
 import assert from "node:assert/strict";
 import { execFileSync } from "node:child_process";
-import { readFileSync } from "node:fs";
+import { mkdtempSync, readFileSync, rmSync } from "node:fs";
+import { tmpdir } from "node:os";
 import { resolve } from "node:path";
 import test from "node:test";
+import { loadGitBaseline } from "./helpers/git-baseline.mjs";
 
 const root = resolve(import.meta.dirname, "..");
+const baselineRef = process.env.CHECKOUT_BASELINE_REF || "origin/main";
 const paths = [
   "src/pages/Checkout/AddressForm.tsx",
   "src/pages/Checkout/PaymentMethod.tsx",
@@ -14,7 +17,6 @@ const paths = [
 ];
 
 const current = Object.fromEntries(paths.map((path) => [path, readFileSync(resolve(root, path), "utf8")]));
-const baseline = Object.fromEntries(paths.map((path) => [path, execFileSync("git", ["show", `origin/main:${path}`], { cwd: root, encoding: "utf8" })]));
 const join = (source) => paths.map((path) => source[path]).join("\n");
 
 function violations(source) {
@@ -39,7 +41,9 @@ function violations(source) {
   ].filter(([, failed]) => failed).map(([scenario]) => scenario);
 }
 
-test("checkout-hardening differential RED: origin/main fails every changed browser/static contract", () => {
+test(`checkout-hardening differential RED: ${baselineRef} fails every changed browser/static contract`, () => {
+  const baseline = loadGitBaseline(root, baselineRef, paths);
+  if (!baseline) return test.skip(`RED baseline skipped: ${baselineRef} is unavailable in this checkout`);
   const failures = violations(baseline);
   assert.deepEqual(failures, [
     "CH-01-A canonical localidad",
@@ -53,7 +57,20 @@ test("checkout-hardening differential RED: origin/main fails every changed brows
     "CH-06-A no WhatsApp checkout action",
     "CH-07-A visible keyboard focus/light mobile",
   ]);
-  console.log(`RED origin/main (10 changed contracts; CH-04 request shape is unchanged): ${failures.join(" | ")}`);
+  console.log(`RED ${baselineRef} (10 changed contracts; CH-04 request shape is unchanged): ${failures.join(" | ")}`);
+});
+
+test("checkout-hardening differential skips only RED when origin/main is absent", (t) => {
+  const temporary = mkdtempSync(resolve(tmpdir(), "checkout-differential-"));
+  t.after(() => rmSync(temporary, { recursive: true, force: true }));
+  execFileSync("git", ["init", "--quiet", temporary]);
+  assert.equal(loadGitBaseline(temporary, "origin/main", paths), null);
+});
+
+test("checkout-hardening differential does not hide unrelated Git failures", (t) => {
+  const temporary = mkdtempSync(resolve(tmpdir(), "checkout-not-git-"));
+  t.after(() => rmSync(temporary, { recursive: true, force: true }));
+  assert.throws(() => loadGitBaseline(temporary, "origin/main", paths), /git repository|repositorio git/);
 });
 
 test("checkout-hardening differential GREEN: candidate passes all 11 browser/static contracts", () => {

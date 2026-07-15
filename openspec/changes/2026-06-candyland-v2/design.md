@@ -9,7 +9,7 @@ Implement CH-01..07 in the existing React Router checkout. Keep its routes, `Car
 | Decision | Choice / rationale | Alternatives rejected |
 |---|---|---|
 | Locality | Normalize stored `localidad || ciudad`, discard `ciudad`, and rewrite the six canonical fields; invalid JSON safely becomes empty. | Dual fields; eager clear |
-| State | Route components retain UI state through existing storage. `clearCart` resets cart identity and the persisted confirmation key only after verified success. | New store/context |
+| State | Route components retain UI state through existing storage. A persisted `{cartId,key}` lock makes shared `CartContext` boundaries refuse same-cart mutations after an ambiguous dispatch; definitive outcomes clear it. `clearCart` resets cart identity and confirmation state only after verified success. | New store/context |
 | Pure core | JSDoc unions/functions in `src/lib/checkout.js` give TS inference and direct `node --test` coverage. | Dependency/transpile setup |
 | Confirmation | Explicit `ready → pending → preDispatch | succeeded | rejected`; one UUID-strength key is retained per cart attempt and sent in `Idempotency-Key`. Every transport failure is retryable with that key; only verified success clears it. | Permanent ambiguous lock; automatic retries; optimistic success |
 | Idempotency/concurrency | Nullable unique `Order.confirmationKey` plus `confirmationCartId` binds a replay to its originating cart. A stable `Idempotency-Key` is reused for every retry. Before replay/cart/stock work, a parameterized PostgreSQL advisory lock derived from the validated key serializes exact-stock concurrent requests; rollback releases it. The transaction returns one public DTO and sends one email for the winner. | Process-local locks; payload hash without cart binding |
@@ -21,7 +21,7 @@ Implement CH-01..07 in the existing React Router checkout. Keep its routes, `Car
 checkoutData(old/new) -> normalize/validate -> POST /api/checkout -> payment
 paymentMethod -> POST /api/payment-method -> checkoutBank -> confirmation
 Confirm action -> pending -> preDispatch -> retryable rejected (preserve; no POST/lock)
-                         -> transport rejection -> retryable (same persisted key)
+                         -> transport rejection -> retryable + same-cart mutation lock (same persisted key)
                          -> HTTP reject (preserve) | invalid-2xx retryable (same key)
                        -> valid success DTO -> summary -> clear cart + checkout storage
 ```
@@ -50,7 +50,7 @@ Confirm action -> pending -> preDispatch -> retryable rejected (preserve; no POS
 
 ## Interfaces / Contracts
 
-Storage: `cartId`; `checkoutData` (six strings; legacy `ciudad` read-only); `paymentMethod`; transfer-only `checkoutBank`; `checkoutConfirmation = {cartId,key}`; legacy `orderNumber` is no longer written. Confirmed success removes all six keys; otherwise preserve them. A different cart replaces the stored key with a new attempt key.
+Storage: `cartId`; `checkoutData` (six strings; legacy `ciudad` read-only); `paymentMethod`; transfer-only `checkoutBank`; `checkoutConfirmation = {cartId,key}`; `checkoutMutationLock = {cartId,key}` only after ambiguous dispatch; legacy `orderNumber` is no longer written. Confirmed success removes checkout and lock state. A different cart replaces the stored key and is not blocked by another cart's lock.
 
 Requests remain exact: checkout six-field JSON; payment `{method}`; confirmation bodyless with `Idempotency-Key`; present `cartId` URI-encoded. The backend accepts a UUID-format key within its documented length bound and requires any replay to match the stored `confirmationCartId`. Success requires all `ConfirmOrderResponse` fields before clearing.
 
@@ -72,7 +72,7 @@ Address/payment transport failures remain retryable because they cannot create a
 |---|---|
 | Node RED | Key lifecycle, exact header, validation, DTO guard, transitions |
 | Static/build | Routes, forbidden actions, lint/build, dependency counts |
-| Playwright | Retention; exact reused header across promise/DNS-like failures and refresh; duplicate block; success-only clear; both instructions; live/focus/keyboard; 390×844; clean console |
+| Playwright | Retention; exact reused header across promise/DNS-like failures and refresh; same-cart mutation lock across navigation; duplicate block; success-only clear; both instructions; live/focus/keyboard; 390×844; clean console |
 | Backend | Stubbed sequential and concurrent replays prove one order, one stock decrement, and one email; migration/schema checks remain offline |
 
 ## Threat Matrix

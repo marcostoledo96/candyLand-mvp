@@ -12,6 +12,7 @@ const checkoutFiles = [
 ];
 const checkout = checkoutFiles.map(read).join("\n");
 const api = read("src/lib/api.ts");
+const cartContext = read("src/context/CartContext.tsx");
 const app = read("src/App.tsx");
 const pkg = JSON.parse(read("package.json"));
 
@@ -28,6 +29,8 @@ assert.match(api, /\/api\/payment-method\$\{q\}/);
 assert.match(api, /\/api\/orders\/confirm\$\{q\}/);
 assert.match(api, /"Idempotency-Key": confirmationKey/);
 assert.match(checkout, /checkoutConfirmation/);
+assert.match(checkout, /checkoutMutationLock/);
+assert.match(cartContext, /isCartMutationLocked/);
 assert.equal(/saved\.state === "ambiguous"|No hay una acción de reenvío disponible/.test(checkout), false, "checkout must not retain a permanent ambiguous lock");
 assert.equal(pkg.scripts["test:checkout-hardening"], "node --test test/checkout-hardening.test.mjs");
 assert.equal(pkg.scripts["assert:checkout-hardening"], "node scripts/assert-checkout-hardening.mjs");

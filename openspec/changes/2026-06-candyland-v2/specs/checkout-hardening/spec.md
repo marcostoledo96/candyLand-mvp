@@ -73,6 +73,13 @@ The confirmation action MUST block duplicate in-flight submission. Only a succes
 - THEN it MUST preserve the cart and confirmation key, present a retry action, and MUST NOT claim success
 - AND the retry MUST reuse the same key so the backend returns the original order without a second stock decrement or email
 
+#### Scenario: Ambiguous cart mutation lock
+- GIVEN a dispatched confirmation has an ambiguous outcome for a cart and confirmation key
+- WHEN the shopper navigates to the catalog or cart and attempts to add, remove, increase, decrease, or clear that same cart
+- THEN the mutation MUST be refused with an accessible status and no mutation request
+- AND another cart MUST remain mutable
+- AND a definitive rejection, pre-dispatch recovery, or verified replay success MUST clear the lock only when it belongs to the current cart
+
 ### Requirement: CH-08 Idempotent confirmation
 
 The frontend MUST create one cryptographically strong confirmation key per cart/checkout attempt, persist it until verified success, and send it in the `Idempotency-Key` header on every confirmation request. The backend MUST validate the key, bind it to the cart that created the order, persist it under a unique PostgreSQL constraint, and return the original public confirmation DTO for an exact replay. Before replay/cart/stock work it MUST acquire a parameterized key-derived PostgreSQL advisory lock; rollback MUST release it. Concurrent exact-stock replays MUST create at most one order, decrement stock once, and send at most one email. Production MUST apply the forward migration before serving this contract.

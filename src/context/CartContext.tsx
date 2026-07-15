@@ -2,6 +2,7 @@
 import React, { createContext, useContext, useEffect, useState, ReactNode } from "react";
 import { Product } from "../components/Catalog/CatalogCard/CatalogCard";
 import { addItemToCart, getCart, ApiCart, updateCartItem, deleteCartItem } from "../lib/api";
+import { isCartMutationLocked } from "../lib/checkout.js";
 
 export interface CartItem extends Product {
   quantity: number;
@@ -26,6 +27,15 @@ export const CartProvider = ({ children }: { children: ReactNode }) => {
   const [cartId, setCartId] = useState<string | null>(
     typeof window !== "undefined" ? localStorage.getItem("cartId") : null
   );
+  const [mutationError, setMutationError] = useState("");
+
+  const mutationIsLocked = () => {
+    let locked = false;
+    try { locked = isCartMutationLocked(localStorage.getItem("checkoutMutationLock"), cartId); } catch {}
+    if (locked) setMutationError("Este carrito tiene una confirmación pendiente. Reintentá la confirmación antes de modificarlo.");
+    else setMutationError("");
+    return locked;
+  };
 
   const normalizeImageUrl = (url?: string | null) => {
     const u = String(url || '').trim();
@@ -51,6 +61,7 @@ export const CartProvider = ({ children }: { children: ReactNode }) => {
   };
 
   const addToCart = async (product: Product) => {
+    if (mutationIsLocked()) return;
     try {
       const data = await addItemToCart(product.id, 1, cartId || undefined);
       applyApiCart(data);
@@ -70,6 +81,7 @@ export const CartProvider = ({ children }: { children: ReactNode }) => {
   };
 
   const removeFromCart = async (id: number) => {
+    if (mutationIsLocked()) return;
     const item = cart.find((i) => i.id === id);
     if (!item || !item.cartItemId) {
       setCart((prev) => prev.filter((it) => it.id !== id));
@@ -85,12 +97,14 @@ export const CartProvider = ({ children }: { children: ReactNode }) => {
   };
 
   const clearCart = () => {
+    if (mutationIsLocked()) return;
     setCart([]);
     setCartId(null);
     try { localStorage.removeItem("cartId"); } catch {}
   };
 
   const increaseQuantity = async (id: number) => {
+    if (mutationIsLocked()) return;
     const item = cart.find((i) => i.id === id);
     if (!item || !item.cartItemId) {
       setCart((prev) =>
@@ -110,6 +124,7 @@ export const CartProvider = ({ children }: { children: ReactNode }) => {
   };
 
   const decreaseQuantity = async (id: number) => {
+    if (mutationIsLocked()) return;
     const item = cart.find((i) => i.id === id);
     if (!item || !item.cartItemId) {
       setCart((prev) =>
@@ -166,6 +181,7 @@ export const CartProvider = ({ children }: { children: ReactNode }) => {
         totalPrice,
       }}
     >
+      {mutationError && <p role="alert">{mutationError}</p>}
       {children}
     </CartContext.Provider>
   );

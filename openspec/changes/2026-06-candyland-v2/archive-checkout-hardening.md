@@ -7,14 +7,15 @@
 
 ## Result Contract
 
-- **requirements**: **8/8**; **scenarios**: **13/13**; **lock cases**: **5/5**
-- **tests**: **69**; **backend**: **12**; **Playwright**: **15**
-- **surface**: exact **1,469 additions + 489 deletions = 1,958 / 3,000**; headroom **1,042**; **18 modified + 10 untracked = 28 paths**; archive remains **44 lines**
+- **requirements**: **8/8**; **scenarios**: **14/14**; **lock cases**: **5/5**
+- **tests**: **73**; **backend**: **12**; **Playwright**: **16**
+- **surface**: exact **1,625 additions + 489 deletions = 2,114 / 3,000**; headroom **886**; **29 paths**
 - **task state**: Engram tasks **#5408** and OpenSpec **RCH-8** mark archive refresh complete
 
 ## Approved Architecture
 
 - Every confirmation retry/replay reuses the stable UUID-strength `Idempotency-Key` persisted per cart attempt.
+- An ambiguous dispatched confirmation persists a cart/key mutation lock enforced by every shared `CartContext` mutation boundary; definitive and pre-dispatch outcomes clear only the current cart's lock, so another cart's valid lock remains independent.
 - Backend cart binding plus the unique PostgreSQL key returns the original public DTO; winner-only stock decrement and email prevent duplicate effects.
 - A parameterized key-derived PostgreSQL transaction advisory lock runs before replay/cart/stock work. Exact-stock concurrent requests serialize; rollback releases the lock.
 - Forward migration is required before deployment: run `prisma migrate deploy` before serving the idempotent confirmation backend.
@@ -28,7 +29,7 @@
 
 ## Evidence / Warnings
 
-- Fresh approved evidence covers 8/8 requirements, 13/13 scenarios, 5/5 lock cases, 69 tests, 12 backend checks, and 15 Playwright scenarios.
+- Fresh approved evidence covers 8/8 requirements, 14/14 scenarios, 5/5 backend lock cases, 73 tests, 12 backend checks, and 16 Playwright scenarios.
 - Warnings preserved: migration must precede deploy; localStorage PII, duplicate customer rows, volatile receipt after refresh, and broader pending/direct-client operational limits remain documented risks.
 - Parent change stays open for unrelated backlog and deferred deployment/runtime work.
 

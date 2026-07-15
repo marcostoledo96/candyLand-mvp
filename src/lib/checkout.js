@@ -75,6 +75,33 @@ export function getConfirmationAttempt(raw, cartId, cryptoApi) {
   return { cartId, key: createConfirmationKey(cryptoApi) };
 }
 
+/** @param {{cartId:unknown, key:unknown} | null | undefined} attempt */
+export function lockConfirmationAttempt(attempt) {
+  return attempt && typeof attempt.cartId === "string" && isConfirmationKey(attempt.key)
+    ? { cartId: attempt.cartId, key: attempt.key }
+    : null;
+}
+
+/** @param {unknown} raw */
+export function getConfirmationLock(raw) {
+  let saved = null;
+  try { saved = typeof raw === "string" ? JSON.parse(raw) : raw; } catch { return null; }
+  return lockConfirmationAttempt(saved);
+}
+
+/** @param {unknown} raw @param {string | null | undefined} cartId */
+export function isCartMutationLocked(raw, cartId) {
+  const lock = getConfirmationLock(raw);
+  return Boolean(cartId && lock?.cartId === cartId);
+}
+
+/** @param {{getItem:(key:string)=>string|null, removeItem:(key:string)=>void}} storage @param {string | null | undefined} cartId */
+export function clearCartMutationLockForCart(storage, cartId) {
+  try {
+    if (cartId && getConfirmationLock(storage.getItem("checkoutMutationLock"))?.cartId === cartId) storage.removeItem("checkoutMutationLock");
+  } catch { /* best effort */ }
+}
+
 /** @param {{kind:string, status?:number, body?:any}} failure */
 export function classifyCheckoutFailure(failure) {
   if (failure.kind === "pre-dispatch") return { kind: "preDispatch", message: "No se pudo iniciar la confirmación. Revisá tu conexión e intentá nuevamente.", fields: {}, action: "retry" };

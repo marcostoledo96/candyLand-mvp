@@ -8,7 +8,7 @@ async (page) => {
     orderId: 1, orderNumber: "CL-100", totalCents: 1250, paymentMethod: "transferencia", items: [{ productId: 2, quantity: 1, priceCents: 1250, subtotalCents: 1250 }],
     customer: { id: 1, nombre: "Ana", telefono: "11", direccion: "Calle 1", localidad: "CABA", provincia: "BA", codigoPostal: "1000" },
   };
-  const state = { checkoutStatus: 200, paymentStatus: 200, confirmStatus: 200, confirmCalls: 0, delayConfirm: false, releaseConfirm: null };
+  const state = { checkoutStatus: 200, paymentStatus: 200, confirmStatus: 200, confirmCalls: 0, cartMutationCalls: 0, delayConfirm: false, releaseConfirm: null };
 
   await page.unroute("**/api/**");
   page.on("console", (message) => {
@@ -21,7 +21,11 @@ async (page) => {
     const request = route.request();
     const path = request.url().replace(/^https?:\/\/[^/]+/, "");
     requests.push({ path, method: request.method(), body: request.postData(), idempotencyKey: request.headers()["idempotency-key"] });
-    if (path.startsWith("/api/carrito")) return json(route, { cartId: "cart/a b", items: [{ id: 1, productId: 2, title: "Gomitas", priceCents: 1250, quantity: 1, subtotalCents: 1250 }], totalItems: 1, totalCents: 1250 });
+    if (path.startsWith("/api/productos")) return json(route, [{ id: 3, title: "Caramelo", description: "Dulce", priceCents: 500, image: "/img/dulce1.jpg", category: "Caramelos" }]);
+    if (path.startsWith("/api/carrito")) {
+      if (request.method() !== "GET") state.cartMutationCalls += 1;
+      return json(route, { cartId: "cart/a b", items: [{ id: 1, productId: 2, title: "Gomitas", priceCents: 1250, quantity: 1, subtotalCents: 1250 }], totalItems: 1, totalCents: 1250 });
+    }
     if (path.startsWith("/api/checkout")) return json(route, state.checkoutStatus === 200 ? { cartId: "cart/a b" } : state.checkoutStatus === 400 ? { error: "Campos requeridos faltantes", missing: ["telefono"] } : { error: "Carrito no encontrado" }, state.checkoutStatus);
     if (path.startsWith("/api/payment-method")) return json(route, state.paymentStatus === 200 ? { cartId: "cart/a b", method: "transferencia", bank: { alias: "candy.alias", cbu: "123", titular: "CandyLand" } } : { error: "Carrito no encontrado" }, state.paymentStatus);
     if (path.startsWith("/api/orders/confirm")) {
@@ -144,6 +148,36 @@ async (page) => {
   assert(retryRequests.slice(-2).every((request) => request.idempotencyKey === retryKey), "CH-08 promise retry after refresh reuses exactly one key");
   assert(state.confirmCalls === 2, "CH-08 promise retry receives one replayable order response");
 
+  // CH-08: an ambiguous dispatched confirmation locks same-cart mutations across navigation.
+  state.confirmStatus = "network";
+  state.confirmCalls = 0;
+  state.cartMutationCalls = 0;
+  await go("/checkout/confirmacion", { cartId: "cart/a b", checkoutData: storedAddress });
+  await page.getByRole("button", { name: "Confirmar pedido" }).click();
+  await page.getByRole("button", { name: "Reintentar confirmación" }).waitFor();
+  const lockedKey = await page.evaluate(() => JSON.parse(localStorage.getItem("checkoutConfirmation")).key);
+  await page.evaluate(() => Object.defineProperty(navigator, "onLine", { configurable: true, get: () => false }));
+  await page.getByRole("button", { name: "Reintentar confirmación" }).click();
+  assert(await page.evaluate(() => localStorage.getItem("checkoutMutationLock")) === null, "CH-08 pre-dispatch retry clears the current cart mutation lock");
+  await page.evaluate(({ cartId, key }) => localStorage.setItem("checkoutMutationLock", JSON.stringify({ cartId, key })), { cartId: "cart/a b", key: lockedKey });
+  await page.evaluate(() => Object.defineProperty(navigator, "onLine", { configurable: true, get: () => true }));
+  await page.goto("http://127.0.0.1:5173/carrito");
+  await page.getByRole("button", { name: "+" }).click();
+  await page.getByRole("button", { name: "-" }).click();
+  await page.getByRole("button", { name: "Eliminar" }).click();
+  assert(await page.getByRole("alert").filter({ hasText: "confirmación pendiente" }).count() === 1, "CH-08 locked mutation exposes an accessible error");
+  assert(state.cartMutationCalls === 0, "CH-08 locked cart sends no mutation requests");
+  await page.goto("http://127.0.0.1:5173/catalogo");
+  await page.getByRole("button", { name: "Agregar al carrito" }).first().click();
+  assert(state.cartMutationCalls === 0, "CH-08 catalog navigation cannot bypass the lock");
+  state.confirmStatus = 200;
+  await page.goto("http://127.0.0.1:5173/checkout/confirmacion");
+  await page.getByRole("button", { name: "Confirmar pedido" }).click();
+  await page.getByText("Tu pedido fue confirmado.").waitFor();
+  assert(requests.filter((request) => request.path.startsWith("/api/orders/confirm")).slice(-2).every((request) => request.idempotencyKey === lockedKey), "CH-08 locked retry reuses the same key");
+  assert(await page.evaluate(() => localStorage.getItem("checkoutMutationLock")) === null, "CH-08 successful replay clears the mutation lock");
+  assert(await page.evaluate(() => localStorage.getItem("cartId")) === null, "CH-08 successful replay clears the cart");
+
   // CH-06/07: forbidden paths absent and keyboard works at 390px with no overflow.
   await page.setViewportSize({ width: 390, height: 844 });
   await page.goto("http://127.0.0.1:5173/checkout/pago");
@@ -152,5 +186,5 @@ async (page) => {
   await page.keyboard.press("Tab");
   assert(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth), "CH-07 no horizontal overflow");
   assert(failures.length === 0, `clean console/network: ${failures.join(" | ")}`);
-  return { scenarios: 15, requests: requests.length, errors: failures };
+  return { scenarios: 16, requests: requests.length, errors: failures };
 }
