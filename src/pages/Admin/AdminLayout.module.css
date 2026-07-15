@@ -63,6 +63,11 @@
   font-weight: 600;
 }
 
+.navLink[aria-current='page'] {
+  background: #fce4ec;
+  font-weight: 600;
+}
+
 .navLinkDisabled {
   color: #b08968;
   cursor: not-allowed;

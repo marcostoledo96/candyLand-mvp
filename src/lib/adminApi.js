@@ -44,6 +44,7 @@ function isAccountStatusVerificationFailure(body) {
 
 async function adminRequest(token, path, init = {}) {
   const res = await fetchAdmin(`${API_URL}${path}`, { ...init, headers: authHeader(token) });
+  if (res.status === 204) return undefined;
   if (res.ok) return res.json();
   const body = await res.json().catch(async () => ({ error: await res.text().catch(() => '') }));
   if (res.status === 401 && !isAccountStatusVerificationFailure(body)) {
@@ -95,4 +96,16 @@ export async function updateAdminProduct(token, id, payload) {
 
 export async function listAdminCategories(token) {
   return adminRequest(token, '/api/admin/categories');
+}
+
+export async function createAdminCategory(token, payload) {
+  return adminRequest(token, '/api/admin/categories', { method: 'POST', body: JSON.stringify({ name: payload.name }) });
+}
+
+export async function updateAdminCategory(token, id, payload) {
+  return adminRequest(token, `/api/admin/categories/${id}`, { method: 'PATCH', body: JSON.stringify({ name: payload.name }) });
+}
+
+export async function deleteAdminCategory(token, id) {
+  return adminRequest(token, `/api/admin/categories/${id}`, { method: 'DELETE' });
 }

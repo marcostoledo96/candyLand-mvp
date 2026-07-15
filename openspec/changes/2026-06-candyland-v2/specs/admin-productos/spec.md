@@ -1,8 +1,8 @@
-# Delta — Admin categorías y pedidos CRUD
+# Delta — Admin categories, orders, and product form
 
 ## Scope
 
-Backend-only admin endpoints for categories and orders on branch `backend/admin-categories-orders-crud`. Protected by admin JWT. No admin UI, no public form endpoints, no payment/stock/email checkout changes, no public product detail page.
+The original requirements cover protected category/order endpoints. Later requirements add the product-form UI and the category-management UI as separate frontend slices. Public forms, payment/stock/email checkout changes, and public product detail remain out of scope.
 
 ## ADDED Requirements
 
@@ -171,4 +171,104 @@ The dialog MUST have an accessible name, labels, visible focus, and live status/
 
 ## Product Form Slice Boundaries
 
-The product-form slice MUST NOT add category CRUD, orders, backend/schema/auth changes, a detail endpoint, uploads, permanent deletion, bulk actions, search, pagination, or dependencies.
+This boundary applies only to the product-form slice: it MUST NOT add category CRUD, orders, backend/schema/auth changes, a detail endpoint, uploads, permanent deletion, bulk actions, search, pagination, or dependencies.
+
+## ADDED Requirements
+
+### Requirement: Protected Admin Categories Route and Navigation
+
+The system MUST expose `/admin/categorias` as a real protected admin route inside the existing admin shell. The shell MUST provide an enabled Categories navigation link and MUST NOT retain a “coming soon” placeholder for it.
+
+#### Scenario: AC-01 Authorized route and navigation
+- GIVEN an authenticated admin opens the shell
+- WHEN they select Categories or navigate to `/admin/categorias`
+- THEN the category page MUST render within the admin shell without public Header or Footer
+
+### Requirement: Category List States
+
+The category page MUST load the authenticated admin category list and expose loading, retryable error, empty, and success states.
+
+#### Scenario: AC-02 Loading and success
+- GIVEN the category request is pending or succeeds with categories
+- WHEN the page renders
+- THEN it MUST announce loading, then render each returned category name
+
+#### Scenario: AC-03 Retryable failure
+- GIVEN category loading fails with a non-auth error
+- WHEN the error state is shown
+- THEN it MUST keep the admin session and provide a retry action
+
+#### Scenario: AC-04 Empty list
+- GIVEN category loading returns an empty list
+- WHEN the page renders
+- THEN it MUST show an explicit empty state and allow creation
+
+### Requirement: Create and Edit Categories
+
+The system MUST allow an admin to create or edit only a category name through the existing category endpoints. The UI MUST NOT submit an activation field: `active` is read-only response data and the mutation DTO supports only `name`.
+
+#### Scenario: AC-05 Create or edit success
+- GIVEN a non-empty unique name and, for edit, an existing category
+- WHEN the admin submits the form
+- THEN it MUST create or update the name and refresh the displayed list
+
+#### Scenario: AC-06 Duplicate name conflict
+- GIVEN a create or edit request returns 409 for a duplicate name
+- WHEN the response arrives
+- THEN the form MUST remain open with its input and visible error preserved
+
+#### Scenario: AC-07 Missing edit target
+- GIVEN an edit request returns 404
+- WHEN the response arrives
+- THEN the form MUST preserve its input and show a visible not-found error
+
+#### Scenario: AC-08 Pending submission
+- GIVEN a category create or edit request is pending
+- WHEN the admin submits again or tries to close the form
+- THEN no second mutation MUST be sent and the pending state MUST be announced
+
+### Requirement: Confirmed Category Deletion
+
+The system MUST require explicit confirmation before deleting a category.
+
+#### Scenario: AC-09 Deletion confirmation
+- GIVEN an admin selects delete for a category
+- WHEN confirmation has not been given
+- THEN the system MUST NOT send a delete request
+
+#### Scenario: AC-10 Product-referenced category blocked
+- GIVEN deletion returns 409 because products reference the category
+- WHEN the response arrives
+- THEN the category MUST remain listed and the blocking error MUST be visible
+
+#### Scenario: AC-11 Successful or missing deletion
+- GIVEN a confirmed deletion returns 204 or 404
+- WHEN the response arrives
+- THEN a 204 MUST remove the category from the list and a 404 MUST show a visible not-found error without removing another category
+
+### Requirement: Shared Session, Accessibility, and Presentation
+
+The page MUST reuse central admin API authentication semantics: a genuine 401 MUST expire the session and redirect to login, while `Unable to verify account status` MUST remain a retryable local failure. It MUST be light-only, responsive, keyboard-operable, visibly focused, and expose labelled controls plus live status and error feedback.
+
+#### Scenario: AC-12 Authentication classification
+- GIVEN a category request receives a genuine 401 or the known transient verification 401
+- WHEN the response is handled
+- THEN the genuine response MUST clear and redirect, while the transient response MUST retain the session and offer retry
+
+#### Scenario: AC-13 Accessible narrow viewport
+- GIVEN a keyboard user or a narrow viewport
+- WHEN they use category forms, confirmation, and retry controls
+- THEN focus MUST move predictably, return to the invoking control on close, and all controls MUST remain usable without a dark variant
+
+## Admin Categories UI Slice Boundaries
+
+This slice MUST NOT change the product form, orders UI, backend routes, schema, auth model, dependencies, bulk actions, search, pagination, activation mutation, or permanent product deletion.
+
+## Result Contract
+
+- **status**: `success`
+- **executive_summary**: Formal requirements AC-01 through AC-13 define the protected, accessible category-management UI while preserving the prior backend and product-form requirements.
+- **artifacts**: `openspec/changes/2026-06-candyland-v2/specs/admin-productos/spec.md`; Engram `sdd/2026-06-candyland-v2/spec`
+- **next_recommended**: `sdd-design`
+- **risks**: Existing category `active` is derived response data only; mutation must remain `{ name }`.
+- **skill_resolution**: `paths-injected` — frontend-design, playwright-best-practices, typescript-advanced-types, karpathy-guidelines, and ponytail; shared SDD/OpenSpec conventions.

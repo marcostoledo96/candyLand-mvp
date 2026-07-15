@@ -34,9 +34,9 @@
 - [x] 4.1 Diseñar auth admin.
 - [x] 4.2 Crear modelo/admin user si falta.
 - [x] 4.3 Crear endpoints admin productos.
-- [x] 4.4 Crear endpoints admin categorías. (deferred to follow-up branch)
+- [x] 4.4 Crear endpoints admin categorías. (Backend shipped; category UI deferred → slice 7h.)
 - [x] 4.5 Crear endpoints admin pedidos. (deferred to follow-up branch)
-- [x] 4.6 Crear pantallas admin. [Partial — auth + products list/deactivate/reactivate shipped in slice 7f; product form + category CRUD + order UI deferred.]
+- [x] 4.6 Crear pantallas admin. [Partial — auth/products list shipped in 7f; product form shipped in 7g; category CRUD UI shipped in slice 7h; order UI deferred.]
 - [x] 4.7 Proteger rutas admin.
 
 ## 5. Productos y stock
@@ -553,6 +553,137 @@ Size exception: not-used
 
 - [x] APF-7.1 hand off to `sdd-verify`; refreshed after approved R4-001 with APF 11/11, Node 48/48, direct lint/build/static/backend checks, durable 36-scenario execution, focused mutation/refresh proof, and deterministic `/me` retry evidence.
 - [x] APF-7.2 `archive-admin-product-form.md` and Engram archive history exist; refresh archive metadata after the R4-001 verify update without changing product scope.
+
+## 7h. Frontend admin — categories UI (branch `frontend/admin-categories`)
+
+Scope: AC-01..13 (delta spec `openspec/changes/2026-06-candyland-v2/specs/admin-productos/spec.md`). Native `<dialog>` create/edit + confirm-delete dialogs, 204-safe `adminRequest`, `createAdminCategory`/`updateAdminCategory`/`deleteAdminCategory` methods, list four states (loading/error+retry/empty/success), backend 400/404/409 mapping, both 401 classes (genuine expire vs `Unable to verify account status` transient), focus/Escape/restore, 390×844, light-only, no new dependencies. Reuse `PublicRoutes.module.css` states, `extractApiError`, `adminValidation.js` patterns, and `AdminLayout`. Replace `/admin/categorias` redirect with a real lazy nested route; remove "Próximamente" from the Categories nav link; keep Pedidos disabled. Backend contracts (`GET/POST/PATCH/DELETE /api/admin/categories`, `{name}` only payload, 201/200/204/400/404/409) already shipped; no backend change.
+
+### Review Workload Forecast (full surface — planning + implementation + tests + verify + archive)
+
+Measured planning delta already on disk (will be staged with the PR):
+- `tasks.md` (extended with slice 7h + Phase 0 reconciliation, this section): ~140 net lines
+- `design.md`: 0 net lines (already shipped in prior phase, observation #5582)
+- **Planning total**: ~140 lines
+
+Forward implementation deltas (`sdd-apply` produces):
+- `src/lib/adminApi.js` (204-safe `adminRequest` + 3 CRUD exports + tests): 60
+- `src/App.tsx` (lazy nested `/admin/categorias` route, replace redirect): 6
+- `src/pages/Admin/AdminLayout.tsx` (route-aware `NavLink` for Productos + Categorías): 25
+- `src/pages/Admin/AdminLayout.module.css` (`aria-current` active style): 8
+- `src/pages/Admin/AdminCategoriesPage.tsx` (NEW, list + form + confirm dialogs): 250
+- `src/pages/Admin/AdminCategoriesPage.module.css` (NEW, light + focus + 390px): 130
+- `test/admin-categories.test.mjs` (NEW, RED + GREEN via `node --test`): 140
+- `test/admin-auth-products.playwright.mjs` (extend with 13 AC scenarios): 130
+- `scripts/assert-admin-auth-products.mjs` (extend with AC checks): 30
+- `package.json` (`test:admin-categories` + root `test` append): 4
+- `docs/INDEX.md` (one-line admin categories note, conditional): 12
+- `openspec/changes/2026-06-candyland-v2/verify-admin-categories.md` (NEW, sdd-verify output): 60
+- `openspec/changes/2026-06-candyland-v2/archive-admin-categories.md` (NEW, sdd-archive): 25
+- Implementation reserves (debug, minor CSS tweaks, lint/build churn, JSDoc tweaks, fontend re-render fallback if needed): ~130
+- **Forward total**: ~1,010 lines
+
+| Field | Value |
+|---|---|
+| **Total final PR surface (planning + forward + reserves)** | **~1,150 lines** |
+| 400-line budget risk | High (slice is ~2.9× the per-PR default) |
+| 800-line budget risk | Medium |
+| 3000-line budget risk | Low (well under hard cap) |
+| Chained PRs recommended | No (cached `single-pr-default`; user direction: one PR per session) |
+| Delivery strategy | single-pr-default (cached) |
+| Chain strategy | not-applicable |
+| Size exception | not-used |
+| Implementation reserves | ~130 (12% of forward implementation) |
+
+Decision needed before apply: No
+Chained PRs recommended: No
+Chain strategy: not-applicable
+400-line budget risk: High
+800-line budget risk: Medium
+3000-line budget risk: Low
+
+**Workload checkpoints (current-session hard 3,000-line cap, not overridable):**
+- **Current forecast ~1,150 = proceed**: no extra approval required.
+- **Total ≥2,400 = checkpoint/reforecast**: PAUSE `sdd-apply` and reforecast.
+- **Total ≥2,600 = split trigger**: PAUSE and prepare the autonomous split.
+- **Projected final total >2,800 = hard split**: defer edit mode (AC-05 edit success path, AC-06 duplicate on edit, AC-07 missing edit target, and `updateAdminCategory` wiring) to a follow-up branch while retaining create mode, list states, delete confirmation (AC-09/10/11), both 401 classes (AC-12), runtime tests, accessibility, error mapping, verify, and archive. List still loads via `listAdminCategories` so the page remains usable; only the edit button becomes a deferred action.
+- **Total >3,000 = forbidden**: never exceed.
+- **Runtime tests, accessibility, and error mapping MUST NOT be sacrificed** to fit budget. They are part of Phase 3.5 + 4 + 5 + 6 and stay.
+- If splitting is needed, the autonomous boundary is edit mode; verification and per-slice archive remain mandatory in this branch.
+
+### Scenario → Test traceability (AC-01..13)
+
+| Spec | Asserted by task(s) |
+|---|---|
+| AC-01 (route + nav) | `7h-2.1`, `7h-2.2`, `7h-4.2`, `7h-5.1` |
+| AC-02 (loading + success) | `7h-1.1` (list), `7h-3.1`, `7h-5.1` |
+| AC-03 (retryable failure) | `7h-3.1`, `7h-5.1` |
+| AC-04 (empty) | `7h-3.1`, `7h-5.1` |
+| AC-05 (create/edit success) | `7h-1.1`, `7h-3.2`, `7h-5.1` |
+| AC-06 (duplicate 409) | `7h-1.1`, `7h-3.2`, `7h-5.1` |
+| AC-07 (edit 404) | `7h-1.1`, `7h-3.2`, `7h-5.1` |
+| AC-08 (pending no-double-submit) | `7h-3.2`, `7h-5.1` |
+| AC-09 (confirm before delete) | `7h-3.3`, `7h-5.1` |
+| AC-10 (409 product-referenced) | `7h-1.1`, `7h-3.3`, `7h-5.1` |
+| AC-11 (204 removes / 404 not-found) | `7h-1.1`, `7h-3.3`, `7h-5.1` |
+| AC-12 (genuine vs transient 401) | `7h-1.1`, `7h-1.2`, `7h-3.4`, `7h-5.1` |
+| AC-13 (a11y, narrow, light-only) | `7h-3.5`, `7h-4.2`, `7h-5.1`, `7h-5.2` |
+
+### Phase 0: Reconcile stale category UI tasks (no loss)
+
+- [x] 7h-0.1 Keep `4.4 Crear endpoints admin categorías` and `4.6 Crear pantallas admin` historical entries; append a "Deferred → slice 7h" note beside each; do not unmark.
+- [x] 7h-0.2 Add slice 7h to section 4 history with link to this section and `archive-admin-categories.md` (no spec merge; per-slice archive convention).
+- [x] 7h-0.3 `archive-admin-categories.md` will close this slice without modifying `openspec/specs/`.
+
+### Phase 1: adminApi 204-safe + CRUD (RED → GREEN, `node --test`)
+
+- [x] 7h-1.1 RED `test/admin-categories.test.mjs`: `createAdminCategory` POST 201, `updateAdminCategory` PATCH 200, `deleteAdminCategory` DELETE 204 (no body, never calls `res.json()`); `{name}` only payload; 401 genuine → `AdminAuthError` + `clearAdminToken`; 409 duplicate → `AdminApiError`; 400 validation → `AdminApiError` with `fields[]`; 404 edit target → `AdminApiError`; 409 delete-blocked → `AdminApiError`; transient 401 (`Unable to verify account status`) → `AdminApiError` retryable.
+- [x] 7h-1.2 GREEN `src/lib/adminApi.js`: branch `adminRequest` on `res.status === 204` → return `undefined` before `res.json()`; export `createAdminCategory`, `updateAdminCategory`, `deleteAdminCategory`; keep `AdminCategory` typedef; reuse `expireAdminSession` only for genuine 401.
+- [x] 7h-1.3 GREEN preserve `listAdminCategories` (already exported); `AdminCategory` typedef unchanged.
+
+### Phase 2: Routing + admin nav (wire)
+
+- [x] 7h-2.1 `src/App.tsx`: replace `/admin/categorias` redirect with lazy `<Route path="/admin/categorias" element={<RequireAdminAuth><AdminLayout /></RequireAdminAuth>}><Route index element={<AdminCategoriesPage />} /></Route>`; lazy-import `AdminCategoriesPage` next to other admin pages; confirm `Header` and `Footer` imports stay inside the public `<Route element={<Layout />}>` only.
+- [x] 7h-2.2 `src/pages/Admin/AdminLayout.tsx`: use `NavLink` for Productos + Categorías (route-aware `aria-current="page"` and `navLinkActive`); keep Pedidos as the only `aria-disabled` "Próximamente"; remove "Próximamente" from Categorías.
+- [x] 7h-2.3 `src/pages/Admin/AdminLayout.module.css`: dynamic `aria-current` styling; retain focus-visible; no `prefers-color-scheme: dark`.
+
+### Phase 3: AdminCategoriesPage (RED → GREEN, Playwright runtime in Phase 5)
+
+- [x] 7h-3.1 NEW `src/pages/Admin/AdminCategoriesPage.tsx`: list state machine `loading | error | empty | success` via `listAdminCategories`; each row "Editar" + "Eliminar" actions; `aria-live` status, `role="alert"` errors; reuse `PublicRoutes.module.css` state classes (`.state`/`.stateTitle`/`.stateText`/`.retryBtn`); 390×844 friendly.
+- [x] 7h-3.2 Form dialog (native `<dialog>`): single field `name` (required, max 100, native + JSX); submit disabled while `saving`; on 409 keep input + show inline conflict; on 404 keep input + show not-found; on 400 map `errors[]` via existing `extractApiError`; pending state uses `aria-live`; on success close + refresh + restore invoker focus via `requestAnimationFrame`; `onCancel={preventDefault; close}`.
+- [x] 7h-3.3 Delete confirmation dialog (native `<dialog>`): Cancel closes; Confirm sends `deleteAdminCategory`; 204 removes the row + closes; 409/404 keeps row + dialog visible; pending blocks close + restore.
+- [x] 7h-3.4 Auth classification: reuse `adminRequest`; transient 401 → local retry, genuine 401 → existing `clearAdminToken` + redirect (no new code).
+- [x] 7h-3.5 NEW `src/pages/Admin/AdminCategoriesPage.module.css`: light-only, focus-visible, 390×844 friendly, no `prefers-color-scheme: dark`; reuse `PublicRoutes.module.css` state classes where possible; active link styling inherits from `AdminLayout`.
+
+### Phase 4: Static + Node tests (RED + GREEN + assertions)
+
+- [x] 7h-4.1 `package.json`: add `test:admin-categories: "node --test test/admin-categories.test.mjs"`; append to root `test` script; count of `dependencies` (9) and `devDependencies` (11) unchanged.
+- [x] 7h-4.2 `scripts/assert-admin-auth-products.mjs`: add checks — `App.tsx` registers lazy `/admin/categorias`; `AdminCategoriesPage` calls `listAdminCategories`, `createAdminCategory`, `updateAdminCategory`, `deleteAdminCategory`; CSS has focus-visible + no dark; `AdminLayout` uses `NavLink` for Productos/Categorías; no `Header`/`Footer` import; no `window.confirm`; no `prefers-color-scheme: dark`; no `dangerouslySetInnerHTML`; no `console.log` of token; no new deps; `/admin` still redirects to `/admin/productos`.
+- [x] 7h-4.3 Update `assert:admin-categories` wiring entry (alias to `assert-admin-auth-products.mjs`); no new assert file (single source of truth per slice convention, matches slice 7g pattern).
+
+### Phase 5: Playwright runtime (mandatory; keep even on tight budget)
+
+- [x] 7h-5.1 `test/admin-auth-products.playwright.mjs` extends `state` + `route` handler for `POST/PATCH/DELETE /api/admin/categories`; adds 13 AC scenarios: AC-01 auth nav, AC-02 loading+success, AC-03 retryable error, AC-04 empty, AC-05 create/edit success, AC-06 duplicate, AC-07 missing edit target, AC-08 pending no-double-submit, AC-09 confirm blocks delete, AC-10 product-referenced 409, AC-11 204 removes / 404 not-found, AC-12 both 401 classes, AC-13 390×844 + focus + Escape restore.
+- [x] 7h-5.2 Assert zero unexpected console errors and clean network (except the expected 401/409/400/500 paths).
+
+### Phase 6: Public regression + lint/build + backend contract
+
+- [x] 7h-6.1 `npm run lint` — zero warnings on touched files.
+- [x] 7h-6.2 `npm run build` — must pass.
+- [x] 7h-6.3 `npm run assert:public-routes` + `assert:home-redesign` + `assert:admin-auth-products` — all PASS.
+- [x] 7h-6.4 `npm test` — durable admin-auth-products + admin-product-form + admin-categories all green.
+- [x] 7h-6.5 Backend contract: `cd backend && DATABASE_URL='postgresql://test:test@127.0.0.1:5432/test' npm run prisma:generate && node test/admin-categories-orders-http.test.js && node test/admin-auth.test.js && node test/admin-middleware.test.js` — no drift, no `.env`.
+
+### Phase 7: Verify + archive
+
+- [x] 7h-7.1 `sdd-verify` passed with 5/5 requirements, AC-01..13, 53/53 Node tests, full static/backend checks, durable 49-scenario runtime, and independent 24/24 runtime checks.
+- [x] 7h-7.2 Per-slice `archive-admin-categories.md` (no spec merge; no move of change folder; updates `docs/INDEX.md` only if admin link missing).
+- [x] 7h-7.3 Do **not** add a new `docs/FUNCIONALIDADES.md`; per-slice archive owns closure.
+
+### Verify remediation (blocked findings only)
+
+- [x] 7h-R1 AC-02 RED/GREEN: loading keeps `aria-busy="true"` and is an announced `role="status" aria-live="polite"`; durable, static, and runtime assertions pass.
+- [x] 7h-R2 AC-13 RED/GREEN: 204 deletion moves focus to the surviving Categories heading; Cancel/Escape still restore the original delete button; runtime asserts the exact heading and never `BODY`.
+- [x] 7h-R3 Assertion quality: await the actual visibility booleans at prior Playwright lines 421/456/461 and wait for conditions without sleeps; clean 49-scenario runtime passes.
 
 ## 8. QA/deploy
 

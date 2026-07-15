@@ -1,5 +1,5 @@
 import React from 'react';
-import { Outlet, useNavigate } from 'react-router-dom';
+import { NavLink, Outlet, useNavigate } from 'react-router-dom';
 import { getAdminToken, clearAdminToken, decodeAdminTokenPayload } from '../../lib/adminAuth.js';
 import styles from './AdminLayout.module.css';
 
@@ -20,12 +20,12 @@ const AdminLayout: React.FC = () => {
       <aside className={styles.sidebar}>
         <div className={styles.brand}>CandyLand Admin</div>
         <nav className={styles.nav} aria-label="Navegación del panel">
-          <a href="/admin/productos" className={`${styles.navLink} ${styles.navLinkActive}`}>
+          <NavLink to="/admin/productos" className={({ isActive }) => `${styles.navLink} ${isActive ? styles.navLinkActive : ''}`}>
             Productos
-          </a>
-          <span className={styles.navLinkDisabled} aria-disabled="true" title="Próximamente">
-            Categorías <span className={styles.soon}>Próximamente</span>
-          </span>
+          </NavLink>
+          <NavLink to="/admin/categorias" className={({ isActive }) => `${styles.navLink} ${isActive ? styles.navLinkActive : ''}`}>
+            Categorías
+          </NavLink>
           <span className={styles.navLinkDisabled} aria-disabled="true" title="Próximamente">
             Pedidos <span className={styles.soon}>Próximamente</span>
           </span>
