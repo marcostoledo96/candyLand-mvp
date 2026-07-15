@@ -16,6 +16,7 @@
 // everything to the canonical uppercase form stored in the DB.
 
 const express = require('express');
+const { Prisma } = require('@prisma/client');
 const prisma = require('../prismaClient');
 const { verifyPassword } = require('../utils/password');
 const { signAdminToken } = require('../utils/jwt');
@@ -262,6 +263,10 @@ function validateOrderStatusInput(input) {
   }
 
   return { ok: errors.length === 0, errors, normalized };
+}
+
+function orderStatusError(status, body) {
+  return Object.assign(new Error(body.error), { status, body });
 }
 
 /**
@@ -551,19 +556,39 @@ router.patch('/admin/orders/:id', adminGuard, async (req, res) => {
     if (!Number.isInteger(id) || id <= 0) return res.status(400).json({ error: 'Invalid order id' });
     const { ok, errors, normalized } = validateOrderStatusInput(req.body);
     if (!ok) return res.status(400).json({ error: 'Validation failed', errors });
-    const existing = await prisma.order.findUnique({ where: { id } });
-    if (!existing) return res.status(404).json({ error: 'Order not found' });
-    const updated = await prisma.order.update({
-      where: { id },
-      data: { status: normalized.status },
-      include: {
-        items: { include: { product: { select: { id: true, title: true } } } },
-        payment: true,
-        customer: true,
-      },
+    const updated = await prisma.$transaction(async (tx) => {
+      const [lockedOrder] = await tx.$queryRaw(Prisma.sql`SELECT id FROM "Order" WHERE id = ${id} FOR UPDATE`);
+      if (!lockedOrder) throw orderStatusError(404, { error: 'Order not found' });
+      const existing = await tx.order.findUnique({ where: { id }, include: { items: true } });
+      if (!existing) throw orderStatusError(404, { error: 'Order not found' });
+
+      if (existing.status !== 'CANCELLED' && normalized.status === 'CANCELLED') {
+        for (const item of existing.items) {
+          await tx.product.updateMany({ where: { id: item.productId }, data: { stock: { increment: item.quantity } } });
+        }
+      } else if (existing.status === 'CANCELLED' && normalized.status !== 'CANCELLED') {
+        for (const item of [...existing.items].sort((a, b) => a.productId - b.productId)) {
+          const result = await tx.product.updateMany({
+            where: { id: item.productId, active: true, stock: { gte: item.quantity } },
+            data: { stock: { decrement: item.quantity } },
+          });
+          if (result.count === 0) throw orderStatusError(400, { error: 'Stock insuficiente' });
+        }
+      }
+
+      return tx.order.update({
+        where: { id },
+        data: { status: normalized.status },
+        include: {
+          items: { include: { product: { select: { id: true, title: true } } } },
+          payment: true,
+          customer: true,
+        },
+      });
     });
     res.json(mapOrderToAdminDto(updated));
   } catch (err) {
+    if (err && err.status && err.body) return res.status(err.status).json(err.body);
     console.error('admin update order error:', err);
     res.status(500).json({ error: 'Internal Server Error' });
   }

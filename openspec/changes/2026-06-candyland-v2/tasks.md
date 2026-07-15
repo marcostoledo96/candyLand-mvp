@@ -1,5 +1,16 @@
 # Tasks — CandyLand v2
 
+## Result Contract — Slice 7i apply
+
+- **status**: `success`
+- **change**: `2026-06-candyland-v2`
+- **slice**: `7i. Frontend admin — orders UI`
+- **executive_summary**: Final independent verification PASS WITH WARNINGS: AO-01..10, all 64 unique scenarios in five clean-preview batches, canonical receipt identity, current runner/preview bindings, full regressions, and stock transitions/concurrency pass.
+- **next_recommended**: `sdd-archive`
+- **actual surface**: exact `1,220 additions / 77 deletions = 1,297 / 3,000`; headroom `1,703`
+- **projected closure surface**: `<=1,377 / 3,000` including final verify/archive metadata; no cap risk expected
+- **scope**: Preserve all existing evidence/history; no Git, secrets, schema, API, backend, dependency, auth, payment, email, or real-DB changes.
+
 ## 1. Documentación e inicialización
 
 - [ ] 1.1 Copiar `AGENTS.md` al root.
@@ -35,8 +46,8 @@
 - [x] 4.2 Crear modelo/admin user si falta.
 - [x] 4.3 Crear endpoints admin productos.
 - [x] 4.4 Crear endpoints admin categorías. (Backend shipped; category UI deferred → slice 7h.)
-- [x] 4.5 Crear endpoints admin pedidos. (deferred to follow-up branch)
-- [x] 4.6 Crear pantallas admin. [Partial — auth/products list shipped in 7f; product form shipped in 7g; category CRUD UI shipped in slice 7h; order UI deferred.]
+- [x] 4.5 Crear endpoints admin pedidos. (Backend shipped; frontend UI → slice 7i below.)
+- [x] 4.6 Crear pantallas admin. [Partial — auth/products 7f, product form 7g, categories 7h; orders → slice 7i below.]
 - [x] 4.7 Proteger rutas admin.
 
 ## 5. Productos y stock
@@ -696,3 +707,94 @@ Chain strategy: not-applicable
 - [ ] 8.7 Admin end-to-end.
 - [x] 8.8 Actualizar README.
 - [ ] 8.9 Guardar memoria Engram final.
+
+## 7i. Frontend admin — orders UI (branch `frontend/admin-orders`)
+
+Scope: AO-01..10; existing Express/Prisma contracts only. Strict TDD, one PR, no dependencies. The original boundary excluded backend/schema/auth/stock/email/payment changes; the terminal review later approved the bounded stock-cancellation exception recorded below.
+
+> **Approved backend exception — `review-142310c3f7c37745`:** only `backend/routes/admin.js` and `backend/test/admin-categories-orders-http.test.js` may change to make order-status cancellation/restoration transactional and idempotent, re-reserve on `CANCELLED -> active`, roll back failed reservations, and serialize duplicates with parameterized PostgreSQL `FOR UPDATE`. No schema, auth, email, payment, dependency, secret, or real-DB change is included.
+
+### Review Workload Forecast (full surface)
+
+| Field | Value |
+|---|---|
+| Estimated changed lines | Planning 60 + implementation 560 + tests 500 + verify 100 + archive 60 + docs 20 + reserve 300 = **~1,600** |
+| 400-line budget risk | High |
+| 3,000-line cap risk | Low |
+| Delivery | single-pr-default; no chain |
+| Gates | ≥2,400 pause/reforecast; ≥2,600 split-prep; >2,800 defer detail polish only; never >3,000 |
+
+Decision needed before apply: No
+Chained PRs recommended: No
+Chain strategy: not-applicable
+400-line budget risk: High
+
+### Phase 0: History and contracts
+
+- [x] 7i-0.1 Reconcile stale order notes in sections 4.5/4.6; link this slice and preserve backend order history.
+- [x] 7i-0.2 Confirm the initial `backend/routes/admin.js` DTO/auth contract. Historical note: the original no-backend boundary was later superseded only by the approved stock-cancellation exception above.
+
+### Phase 1: API foundation (RED → GREEN)
+
+- [x] 7i-1.1 **RED AO-01/Routing**: `test/admin-orders.test.mjs` asserts `/admin/pedidos` is protected and nav is enabled; also reject unknown status before fetch.
+- [x] 7i-1.2 **RED AO-02..04/06..09**: stub `list/get/update` paths, query/body, four statuses, 400/404/network, transient verification 401 vs genuine 401, and no mutation before success.
+- [x] 7i-1.3 **GREEN** `src/lib/adminApi.js`: export `ADMIN_ORDER_STATUSES`, JSDoc order/contact/item types, status/payment formatters, `listAdminOrders`, `getAdminOrder`, `updateAdminOrderStatus` through `adminRequest`.
+
+### Phase 2: Route and shell wiring
+
+- [x] 7i-2.1 **RED AO-01**: static assertion requires lazy route `/admin/pedidos`, nested `RequireAdminAuth`/`AdminLayout`, no public Header/Footer, and enabled `NavLink`.
+- [x] 7i-2.2 **GREEN** modify `src/App.tsx`, `src/pages/Admin/AdminLayout.tsx`, and `AdminLayout.module.css`; preserve existing routes and active/focus behavior.
+
+### Phase 3: Page behavior (RED → GREEN)
+
+- [x] 7i-3.1 **RED AO-02..04**: Playwright scenarios for loading/live status, retry-retained filter, error, empty, list summaries, manual payment labels, and unknown/missing fallbacks.
+- [x] 7i-3.2 **RED AO-05..10**: runtime scenarios for native `<details>/<summary>`, detail loading/retry, keyboard/focus, delayed PATCH single-submit, success-only replacement, 400/404/network/transient 401 retention, genuine 401 redirect, 390px/light-only/a11y.
+- [x] 7i-3.3 **GREEN** create `src/pages/Admin/AdminOrdersPage.tsx` with local state, native details, safe fallbacks, status mutation states/errors, and exact AO traceability IDs.
+- [x] 7i-3.4 **GREEN** create `src/pages/Admin/AdminOrdersPage.module.css` for responsive light-only rows/details, visible focus, and no horizontal overflow.
+
+### Phase 4: Static, durable, and runtime wiring
+
+- [x] 7i-4.1 Extend `scripts/assert-admin-auth-products.mjs`; wire `test:admin-orders`, `assert:admin-orders`, and runtime command in `package.json`; assert no new deps/payment/WhatsApp/dark mode/detail route.
+- [x] 7i-4.2 Run `npm test` with durable Node tests and Playwright AO-01..10; require zero unexpected console/network errors.
+
+### Phase 5: Regression, verification, archive
+
+- [x] 7i-5.1 Run lint/build, public/home/admin regressions, and backend `admin-categories-orders-http`, auth, middleware tests with dummy `DATABASE_URL`; no `.env`/DB.
+- [x] 7i-5.2 Create `verify-admin-orders.md` and `archive-admin-orders.md`; update `docs/INDEX.md` only to remove stale orders-deferred wording; no spec merge/folder move.
+- [x] 7i-5.3 Record AO-01→7i-2/4, AO-02→7i-3/4, AO-03/04→7i-1/3, AO-05→7i-3, AO-06..09→7i-1/3, AO-10→7i-3/4; hand off to `sdd-verify`, then `sdd-archive`.
+
+### Verification history
+
+- Terminal review `review-df982308c234c4c4` approved the 19-file, 1,297-line implementation target with warnings only; archive added 2 metadata files / 32 lines, and the final archived scope of 21 files / 1,329 lines is pending a new final receipt.
+- Final independent verification is recorded in `verify-admin-orders.md` and returns **PASS WITH WARNINGS**: AO-01..10, 64/64 unique runtime scenarios, receipt/artifact binding, and all stock contracts pass.
+- All 22/22 slice tasks are checked; verification passed and archive is authorized.
+
+### 7i bounded frontend remediation — AO-03 / AO-06 / detail retry
+
+- [x] R7i-1 **RED/GREEN AO-06**: replace the page-wide pending ID with per-order sequence locks; the same order cannot submit twice, two orders remain independently disabled, and an old completion cannot unlock or overwrite a newer sequence.
+- [x] R7i-2 **RED/GREEN AO-03**: reconcile a successful returned status against the active filter, removing the exact row when it no longer matches.
+- [x] R7i-3 **RED/GREEN AO-05 design deviation**: detail retry calls `getAdminOrder` again and renders the recovered detail.
+- [x] R7i-4 **RED/GREEN filter ordering**: retain visible rows while changing a filter and ignore a stale list generation after a newer filter response wins.
+- [x] R7i-5 **Regression evidence**: durable Node tests, the mocked Playwright runtime, lint/build, static assertions, and safe backend checks pass.
+- [x] R7i-6 **RED/GREEN AO-03 mutation/list ordering**: use the completion-time filter ref; invalidate every earlier list generation after successful PATCH; remove nonmatching rows and upsert matching rows. Durable RED failed 6/7 before GREEN 7/7. Targeted Playwright runtime passes both reproduced cases: matching filter change during pending PATCH and a pre-mutation list snapshot released after PATCH.
+
+#### TDD Cycle Evidence — remediation only (original history preserved)
+
+| Task | Test file / layer | Safety net before production edit | RED | GREEN | TRIANGULATE | REFACTOR |
+|---|---|---|---|---|---|---|
+| R7i-1 AO-06 locks/sequences | `test/admin-orders.test.mjs` unit + Playwright runtime | `npm run test:admin-orders` 4/4 PASS; syntax check PASS | `npm run test:admin-orders` failed `ERR_MODULE_NOT_FOUND` for new `adminOrdersState.js` | 6/6 PASS; runtime proves two concurrent orders, same-order duplicate block, and independent release | Stale sequence, cross-order lock, same-order duplicate | Extracted small pure state helpers; green retained |
+| R7i-2 AO-03 filter reconciliation | `test/admin-orders.test.mjs` unit + Playwright runtime | Same focused safety net | New filter-reconciliation assertion imported missing helper (same RED command) | 6/6 PASS; runtime removes a `PENDING` row returned as `DELIVERED` | Filtered removal and unfiltered replacement | Shared pure reconciliation helper |
+| R7i-3 detail retry | Playwright runtime | Runtime syntax PASS; prior full runtime history is preserved, not claimed as this remediation's baseline | Retry scenario was written before page handler changed; its first executable dev-server pass stopped at an earlier category-focus check, so it is not claimed as isolated RED proof | Production-preview runtime 64 scenarios, 0 console errors; exact retry makes two detail GETs | Error → retry success plus detail render | None needed |
+| R7i-4 out-of-order list | Playwright runtime | Same | Scenario written before generation guard | Production-preview runtime 64 scenarios, 0 console errors | Delayed `PENDING` then `SHIPPED`; stale `PENDING` cannot replace newer view | Minimal generation ref; no AbortController needed |
+| R7i-6 AO-03 mutation/list ordering | `test/admin-orders.test.mjs` unit + Playwright runtime | `npm run test:admin-orders` 6/6 PASS | New matching-filter/upsert assertion failed 6/7 (`[]` instead of returned `DELIVERED` order); runtime scenario was written before production edits | 7/7 durable PASS; targeted browser harness 2/2 PASS | Matching current filter retains/upserts; stale snapshot after PATCH cannot restore `PENDING` | Added only a filter ref, one generation invalidation, and pure upsert behavior |
+
+#### Safety Net / Work Unit Evidence
+
+| Evidence | Exact result |
+|---|---|
+| Focused durable test | `npm run test:admin-orders` → 7/7 PASS |
+| Full frontend durable/static | `npm test` → 61/61 PASS; `assert:public-routes`, `assert:home-redesign`, `assert:admin-auth-products` → PASS |
+| Frontend build | `npm run lint && npm run build` → PASS, Vite 109 modules |
+| Runtime harness | Clean `vite preview` ran the unchanged matrix exactly once across `auth-products` 14, `categories` 15, `product-form` 19, `orders-foundation` 8, and `orders-races-failures` 8 = **64/64 PASS** with zero harness console/network errors. Receipt identity SHA-256 `4ef14027f1b9a5f56d70b4e9f623895cf227af47b1db10e09afa0ac909b904ef`, recomputed by `npm run assert:admin-runtime-receipt` from recursive key-sorted compact JSON excluding `identitySha256`; runner SHA-256 `62584425d54999ad5f53fb68b6950883290a514779491d5f650bcaf4d458240c`. |
+| Safe backend regression | All 10 `backend/test/*.test.js` with dotenv disabled and a dummy `DATABASE_URL` → PASS; no DB connection. |
+| Rollback boundary | Revert only the batch guards in `test/admin-auth-products.playwright.mjs`, `test/admin-runtime-batches.test.mjs`, the root `package.json` test entry, and `runtime-admin-orders-receipt.json`; product/API/backend contracts stay unchanged. |

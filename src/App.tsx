@@ -22,6 +22,7 @@ const AdminLogin = React.lazy(() => import("./pages/Admin/AdminLogin"));
 const AdminLayout = React.lazy(() => import("./pages/Admin/AdminLayout"));
 const AdminProductsList = React.lazy(() => import("./pages/Admin/AdminProductsList"));
 const AdminCategoriesPage = React.lazy(() => import("./pages/Admin/AdminCategoriesPage"));
+const AdminOrdersPage = React.lazy(() => import("./pages/Admin/AdminOrdersPage"));
 
 
 const App: React.FC = () => {
@@ -72,7 +73,16 @@ const App: React.FC = () => {
         >
           <Route index element={<AdminCategoriesPage />} />
         </Route>
-        <Route path="/admin/pedidos" element={<RequireAdminAuth><Navigate to="/admin/productos" replace /></RequireAdminAuth>} />
+        <Route
+          path="/admin/pedidos"
+          element={
+            <RequireAdminAuth>
+              <AdminLayout />
+            </RequireAdminAuth>
+          }
+        >
+          <Route index element={<AdminOrdersPage />} />
+        </Route>
       </Routes>
       </Suspense>
     </Router>
