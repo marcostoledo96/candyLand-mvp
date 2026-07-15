@@ -16,6 +16,7 @@ function makeTxStub({ products = new Map(), carts = new Map(), orderFactory } = 
   };
 
   const tx = {
+    $executeRaw: async () => 1,
     product: {
       updateMany: async (args) => {
         calls.updateMany.push(args);
@@ -48,6 +49,7 @@ function makeTxStub({ products = new Map(), carts = new Map(), orderFactory } = 
       },
     },
     order: {
+      findUnique: async () => null,
       create: async (args) => {
         calls.orderCreate.push(args);
         if (orderFactory) return orderFactory(args);
@@ -71,6 +73,7 @@ function makeTxStub({ products = new Map(), carts = new Map(), orderFactory } = 
   };
 
   const prisma = {
+    order: { findUnique: tx.order.findUnique },
     $transaction: async (fn) => {
       const productSnapshot = new Map([...products.entries()].map(([id, product]) => [id, { ...product }]));
       try {

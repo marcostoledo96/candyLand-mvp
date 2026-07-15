@@ -1,92 +1,114 @@
-// Paso final del checkout: muestra resumen de la orden creada en el backend
-import React, { useEffect, useState } from "react";
+import React, { useMemo, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useCart } from "../../context/CartContext";
 import styles from "./Checkout.module.css";
-import { postConfirmOrder, ConfirmOrderResponse } from "../../lib/api";
+import { CheckoutApiError, ConfirmOrderResponse, postConfirmOrder } from "../../lib/api";
+import { classifyCheckoutFailure, clearCartMutationLockForCart, confirmationTransition, getConfirmationAttempt, isCompleteConfirmResponse, lockConfirmationAttempt, shouldClearCheckout } from "../../lib/checkout.js";
+
+type ConfirmationState = { state: "ready" | "pending" | "preDispatch" | "rejected" | "succeeded"; order?: ConfirmOrderResponse };
+
+const readConfirmationAttempt = () => {
+  try {
+    const cartId = localStorage.getItem("cartId");
+    if (!cartId) return null;
+    const attempt = getConfirmationAttempt(localStorage.getItem("checkoutConfirmation"), cartId);
+    localStorage.setItem("checkoutConfirmation", JSON.stringify(attempt));
+    return attempt;
+  } catch { return null; }
+};
+
+const readBank = () => {
+  try {
+    const value = JSON.parse(localStorage.getItem("checkoutBank") || "null");
+    return value && ["alias", "cbu", "titular"].every((key) => typeof value[key] === "string") ? value as { alias: string; cbu: string; titular: string } : null;
+  } catch { return null; }
+};
 
 const Confirmation = () => {
   const navigate = useNavigate();
   const { clearCart } = useCart();
-  const [order, setOrder] = useState<ConfirmOrderResponse | null>(null);
-  const [error, setError] = useState<string | null>(null);
-  const data = JSON.parse(localStorage.getItem("checkoutData") || "{}");
-  const whatsappNumber = "5491133190247"; // reemplazar por el real
+  const alertRef = useRef<HTMLDivElement>(null);
+  const [hasCart] = useState(() => {
+    try { return Boolean(localStorage.getItem("cartId")); } catch { return false; }
+  });
+  const [attempt] = useState(readConfirmationAttempt);
+  const [confirmation, setConfirmation] = useState<ConfirmationState>({ state: "ready" });
+  const [message, setMessage] = useState("");
+  const bank = useMemo(readBank, []);
 
-  const message = order
-    ? `Hola Candyland!%0A%0AComprobante de pedido:%0AOrden: ${order.orderNumber}%0ANombre: ${data.nombre}%0ADirección: ${data.direccion}`
-    : `Hola Candyland!`;
+  const focusMessage = (nextMessage: string) => {
+    setMessage(nextMessage);
+    requestAnimationFrame(() => alertRef.current?.focus());
+  };
 
-  const whatsappUrl = `https://wa.me/${whatsappNumber}?text=${message}`;
+  const clearSuccessfulCheckout = () => {
+    clearCartMutationLockForCart(localStorage, attempt?.cartId);
+    clearCart();
+    try {
+      ["checkoutData", "paymentMethod", "checkoutBank", "checkoutConfirmation", "checkoutConfirmState", "orderNumber"].forEach((key) => localStorage.removeItem(key));
+    } catch {}
+  };
 
-  useEffect(() => {
-    (async () => {
-      const cartId = localStorage.getItem("cartId");
-      let lastErr: any = null;
-      // Reintentos ante fallos de red transitorios
-      for (let attempt = 0; attempt < 3; attempt++) {
-        try {
-          const res = await postConfirmOrder(cartId || undefined);
-          setOrder(res);
-          clearCart();
-          setError(null);
-          return;
-        } catch (e: any) {
-          lastErr = e;
-          // si es un error del backend con mensaje, no tiene sentido reintentar
-          if (e?.error) break;
-          // pequeño backoff antes de reintentar fallos de red
-          await new Promise((r) => setTimeout(r, 500 * (attempt + 1)));
-        }
+  const confirmOrder = async () => {
+    const pending = confirmationTransition(confirmation, { type: "submit" }) as ConfirmationState;
+    if (pending.state !== "pending") return;
+    setConfirmation(pending);
+    setMessage("");
+    try {
+      const order = await postConfirmOrder(localStorage.getItem("cartId"), attempt?.key);
+      const completed = confirmationTransition(pending, { type: "succeed", order }) as ConfirmationState;
+      if (shouldClearCheckout(completed)) {
+        setConfirmation(completed);
+        clearSuccessfulCheckout();
+        return;
       }
-      setError(lastErr?.error || lastErr?.message || "No se pudo confirmar la compra");
-    })();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+      try { localStorage.setItem("checkoutMutationLock", JSON.stringify(lockConfirmationAttempt(attempt))); } catch {}
+      setConfirmation({ state: "rejected" });
+      focusMessage("No pudimos verificar el resultado de tu pedido. Conservamos tu carrito para que puedas reintentar.");
+    } catch (error) {
+      const failure = error instanceof CheckoutApiError ? error.failure : { kind: "transport" as const };
+      const result = classifyCheckoutFailure(failure);
+      if (failure.kind === "pre-dispatch") {
+        clearCartMutationLockForCart(localStorage, attempt?.cartId);
+        setConfirmation(confirmationTransition(pending, { type: "preDispatch" }) as ConfirmationState);
+        focusMessage(result.message);
+        return;
+      }
+      if (failure.kind === "http") {
+        clearCartMutationLockForCart(localStorage, attempt?.cartId);
+        setConfirmation(confirmationTransition(pending, { type: "reject" }) as ConfirmationState);
+        focusMessage(result.message);
+        return;
+      }
+      try { localStorage.setItem("checkoutMutationLock", JSON.stringify(lockConfirmationAttempt(attempt))); } catch {}
+      setConfirmation(confirmationTransition(pending, { type: "reject" }) as ConfirmationState);
+      focusMessage(result.message);
+    }
+  };
 
+  const order = confirmation.order;
   return (
-    <div className={styles.confirmation}>
-      <h2>Confirmá tu pedido</h2>
-      {error && <p style={{ color: '#c00' }}>{error}</p>}
-      {order ? (
+    <section className={styles.confirmation} aria-labelledby="confirmation-title">
+      <h2 id="confirmation-title">Confirmá tu pedido</h2>
+      {message && <div ref={alertRef} className={confirmation.state === "succeeded" ? styles.messageSuccess : styles.messageError} role="alert" tabIndex={-1}>{message}</div>}
+      {order && isCompleteConfirmResponse(order) ? (
         <>
+          <p className={styles.messageSuccess} role="status">Tu pedido fue confirmado.</p>
           <p><b>Número de orden:</b> {order.orderNumber}</p>
-          <p><b>Dirección:</b> {data.direccion}, {data.localidad || data.ciudad}</p>
-          <div style={{ marginTop: 12 }}>
-            <h4>Resumen</h4>
-            <ul>
-              {order.items.map((it) => (
-                <li key={it.productId}>x{it.quantity} - ${Math.round(it.subtotalCents / 100)}</li>
-              ))}
-            </ul>
-            <p><b>Total:</b> ${Math.round(order.totalCents / 100)}</p>
-            <p><b>Método de pago:</b> {order.paymentMethod}</p>
-            <p><b>Cliente:</b> {data.nombre} - {data.telefono}</p>
-          </div>
-          <p style={{ marginTop: 12 }}>Enviá tu comprobante al WhatsApp de Candyland:</p>
+          <p><b>Dirección:</b> {order.customer.direccion}, {order.customer.localidad}</p>
+          <h3>Resumen</h3>
+          <ul>{order.items.map((item) => <li key={item.productId}>x{item.quantity} — ${Math.round(item.subtotalCents / 100)}</li>)}</ul>
+          <p><b>Total:</b> ${Math.round(order.totalCents / 100)}</p>
+          {order.paymentMethod === "efectivo" ? <p className={styles.instruction}>Pagá en efectivo al recibir tu pedido.</p> : bank ? <div className={styles.bankBox}><h3>Datos para transferencia</h3><p><b>Alias:</b> {bank.alias}</p><p><b>CBU:</b> {bank.cbu}</p><p><b>Titular:</b> {bank.titular}</p></div> : <p className={styles.instruction}>Tu pedido quedó registrado para transferencia.</p>}
         </>
+      ) : hasCart ? (
+        <p>Revisá los datos y confirmá cuando estés listo.</p>
       ) : (
-        <p>Generando tu orden...</p>
+        <p>No hay un pedido pendiente para confirmar.</p>
       )}
-
-      <a
-        href={whatsappUrl}
-        target="_blank"
-        rel="noopener noreferrer"
-        className={styles.whatsappBtn}
-      >
-        Enviar por WhatsApp
-      </a>
-
-      <p>¡Gracias por tu compra!</p>
-
-      <button
-        onClick={() => navigate("/catalogo")}
-        className={styles.backToShopBtn}
-      >
-        Volver a la tienda
-      </button>
-    </div>
+      {confirmation.state === "succeeded" ? <button type="button" disabled>Pedido confirmado</button> : hasCart && <button type="button" onClick={confirmOrder} disabled={confirmation.state === "pending"}>{confirmation.state === "pending" ? "Confirmando…" : confirmation.state === "preDispatch" || confirmation.state === "rejected" ? "Reintentar confirmación" : "Confirmar pedido"}</button>}
+      <button type="button" onClick={() => { if (confirmation.state !== "pending") navigate("/catalogo"); }} className={styles.backToShopBtn}>Volver a la tienda</button>
+    </section>
   );
 };
 

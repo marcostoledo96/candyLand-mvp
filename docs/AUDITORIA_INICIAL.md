@@ -76,7 +76,7 @@ No hay bloqueadores técnicos graves; el principal riesgo es **mezclar migracion
 | `GET /api/productos/:id` | Sí | — | No debe exponerse como `/producto/:id` público |
 | `GET /api/categories` | No | `backend/AGENTS.md` | Necesario para `/menu` |
 | `POST /api/carrito` | Sí | — | Funcional |
-| `POST /api/checkout` | Sí | — | Guarda customer, pero espera `localidad` mientras el form manda `ciudad` |
+| `POST /api/checkout` | Sí | — | Guarda customer con el contrato canónico `localidad`; checkout frontend ya envía los seis campos normalizados |
 | `POST /api/payment-method` | Sí | — | Soporta transferencia/efectivo |
 | `POST /api/orders/confirm` | Sí | — | No valida stock; no envía email |
 | `POST /api/contact` | No | `backend/AGENTS.md` | Necesario para `/contacto` real |
@@ -101,7 +101,7 @@ No hay bloqueadores técnicos graves; el principal riesgo es **mezclar migracion
 |---|---|---|---|
 | Productos | `GET /api/productos` | `{ id, title, description, priceCents, image, categoryId, category }[]` | Campo `image` puede ser ruta local o URL. |
 | Carrito | `GET /api/carrito?cartId=...` | `{ cartId, items[], totalItems, totalCents }` | Items incluyen producto desnormalizado. |
-| Checkout | `POST /api/checkout` | `{ cartId, customer: {...} }` | Espera `localidad`; frontend envía `ciudad`. |
+| Checkout | `POST /api/checkout` | `{ cartId, customer: {...} }` | Contrato canónico: frontend normaliza y envía `localidad`; confirmación conserva estado ante resultados no concluyentes. |
 | Pago | `POST /api/payment-method` | `{ cartId, method, bank }` | `bank` solo para transferencia. |
 | Orden | `POST /api/orders/confirm` | `{ orderId, orderNumber, totalCents, ... }` | No email, no stock. |
 

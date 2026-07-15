@@ -193,6 +193,27 @@ function orderConfirmError(status, body) {
   return new OrderConfirmDomainError(status, body);
 }
 
+const CONFIRMATION_KEY_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+
+function confirmationResponse(created, paymentMethod) {
+  return {
+    orderId: created.id,
+    orderNumber: created.orderNumber,
+    totalCents: created.totalCents,
+    paymentMethod: paymentMethod === 'CASH' ? 'efectivo' : 'transferencia',
+    items: created.items.map((it) => ({ productId: it.productId, quantity: it.quantity, priceCents: it.priceCents, subtotalCents: it.quantity * it.priceCents })),
+    customer: {
+      id: created.customer.id,
+      nombre: created.customer.name,
+      telefono: created.customer.phone,
+      direccion: created.customer.address,
+      localidad: created.customer.city,
+      provincia: created.customer.province,
+      codigoPostal: created.customer.postalCode,
+    },
+  };
+}
+
 // Confirmar orden — single consistency boundary.
 // Runs cart load, stock validation/decrement, order+payment+items creation,
 // and cart cleanup inside one prisma.$transaction. Email is post-commit and
@@ -201,8 +222,20 @@ app.post('/api/orders/confirm', async (req, res) => {
   try {
     const cartId = typeof req.query.cartId === 'string' ? req.query.cartId : undefined;
     if (!cartId) return res.status(400).json({ error: 'cartId requerido' });
+    const confirmationKey = req.get('Idempotency-Key');
+    if (typeof confirmationKey !== 'string' || confirmationKey.length !== 36 || !CONFIRMATION_KEY_RE.test(confirmationKey)) {
+      return res.status(400).json({ error: 'Idempotency-Key inválido' });
+    }
 
-    const order = await prisma.$transaction(async (tx) => {
+    let order;
+    try {
+      order = await prisma.$transaction(async (tx) => {
+        await tx.$executeRaw`SELECT pg_advisory_xact_lock(hashtextextended(${confirmationKey}, 0))`;
+        const replay = await tx.order.findUnique({ where: { confirmationKey }, include: { items: true, payment: true, customer: true } });
+        if (replay) {
+          if (replay.confirmationCartId !== cartId) throw orderConfirmError(409, { error: 'Idempotency-Key no corresponde al carrito' });
+          return { created: replay, paymentMethod: replay.payment.method, replay: true };
+        }
       const cart = await tx.cart.findUnique({
         where: { id: cartId },
         include: { items: { include: { product: true } }, customer: true },
@@ -273,6 +306,8 @@ app.post('/api/orders/confirm', async (req, res) => {
       const created = await tx.order.create({
         data: {
           orderNumber,
+          confirmationKey,
+          confirmationCartId: cart.id,
           customerId: cart.customerId,
           totalCents,
           status: 'PENDING',
@@ -284,34 +319,28 @@ app.post('/api/orders/confirm', async (req, res) => {
 
       await tx.cartItem.deleteMany({ where: { cartId: cart.id } });
 
-      return { created, paymentMethod: normalizedPayment };
-    });
+        return { created, paymentMethod: normalizedPayment, replay: false };
+      });
+    } catch (err) {
+      if (err instanceof OrderConfirmDomainError) throw err;
+      if (err && err.code === 'P2002') {
+        const replay = await prisma.order.findUnique({ where: { confirmationKey }, include: { items: true, payment: true, customer: true } });
+        if (replay && replay.confirmationCartId === cartId) return res.json(confirmationResponse(replay, replay.payment.method));
+      }
+      throw err;
+    }
 
-    const { created, paymentMethod } = order;
-
-    const response = {
-      orderId: created.id,
-      orderNumber: created.orderNumber,
-      totalCents: created.totalCents,
-      paymentMethod: paymentMethod === 'CASH' ? 'efectivo' : 'transferencia',
-      items: created.items.map((it) => ({ productId: it.productId, quantity: it.quantity, priceCents: it.priceCents, subtotalCents: it.quantity * it.priceCents })),
-      customer: {
-        id: created.customer.id,
-        nombre: created.customer.name,
-        telefono: created.customer.phone,
-        direccion: created.customer.address,
-        localidad: created.customer.city,
-        provincia: created.customer.province,
-        codigoPostal: created.customer.postalCode,
-      },
-    };
+    const { created, paymentMethod, replay } = order;
+    const response = confirmationResponse(created, paymentMethod);
 
     // Post-commit email: fire-and-forget; never blocks confirmation, never throws to the route.
-    Promise.resolve()
-      .then(() => sendOrderConfirmationEmail(response))
-      .catch(() => {
-        console.error('email: send failed (provider error swallowed)');
-      });
+    if (!replay) {
+      Promise.resolve()
+        .then(() => sendOrderConfirmationEmail(response))
+        .catch(() => {
+          console.error('email: send failed (provider error swallowed)');
+        });
+    }
 
     return res.json(response);
   } catch (err) {

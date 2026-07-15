@@ -39,7 +39,9 @@ function run() {
   const dirs = listMigrationDirs();
   assert.ok(dirs.length >= 2, 'there MUST be at least 2 migrations (init + pr3 delta)');
   const initSql = readMigrationSql(dirs[0]);
-  const deltaSql = readMigrationSql(dirs[dirs.length - 1]);
+  const productMigration = dirs.find((dir) => dir.includes('admin_stock_hover_forms'));
+  assert.ok(productMigration, 'Product extension migration must exist');
+  const deltaSql = readMigrationSql(productMigration);
 
   // The init migration is distinct from the delta (init creates Product from scratch).
   assert.ok(/CREATE TABLE "Product"/.test(initSql), 'init migration MUST create Product table (sanity: init is unchanged)');

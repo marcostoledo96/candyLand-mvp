@@ -77,9 +77,9 @@ function run() {
   // --- Migration safety: the new migration MUST backfill existing Product rows ---
   const dirs = listMigrationDirs();
   assert.ok(dirs.length > 0, 'at least one migration directory must exist');
-  // The latest migration is the one we are adding for PR-3 schema extensions.
-  const latestDir = dirs[dirs.length - 1];
-  const sql = readMigrationSql(latestDir);
+  const productMigration = dirs.find((dir) => dir.includes('admin_stock_hover_forms'));
+  assert.ok(productMigration, 'Product extension migration must exist');
+  const sql = readMigrationSql(productMigration);
 
   // stock column: must be added with a default/backfill so existing rows are safe.
   assert.match(
@@ -97,6 +97,17 @@ function run() {
   assert.match(sql, /"hoverImage"\s+TEXT/i, 'migration MUST add Product.hoverImage as TEXT (nullable)');
   // User table present in migration.
   assert.match(sql, /CREATE TABLE "User"/, 'migration MUST create User table');
+
+  // --- Confirmation idempotency migration remains forward-safe for old orders ---
+  const orderModel = extractModel(schema, 'Order');
+  assert.match(orderModel, /confirmationKey\s+String\?\s+@unique/, 'Order confirmationKey MUST be nullable and unique');
+  assert.match(orderModel, /confirmationCartId\s+String\?/, 'Order confirmationCartId MUST be nullable');
+  const idempotencyMigration = dirs.find((dir) => dir.includes('order_confirmation_idempotency'));
+  assert.ok(idempotencyMigration, 'confirmation idempotency migration must exist');
+  const idempotencySql = readMigrationSql(idempotencyMigration);
+  assert.match(idempotencySql, /ADD COLUMN "confirmationKey" TEXT/i, 'existing orders must accept a nullable confirmation key');
+  assert.match(idempotencySql, /ADD COLUMN "confirmationCartId" TEXT/i, 'existing orders must accept a nullable cart binding');
+  assert.match(idempotencySql, /CREATE UNIQUE INDEX "Order_confirmationKey_key"/i, 'confirmation key must be unique');
 
   // --- Existing API field preserved: image still selectable (no rename) ---
   assert.match(productModel, /image\s+String\?/, 'Product.image MUST remain String? (existing API depends on it)');
