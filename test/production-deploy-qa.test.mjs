@@ -57,7 +57,7 @@ test('the smoke runner performs exactly four redacted GET checks in a determinis
 
   assert.equal(evidence.result, 'pass');
   assert.deepEqual(calls.map(({ url }) => new URL(url).pathname), ENDPOINTS);
-  assert.deepEqual(calls.map(({ options }) => options), ENDPOINTS.map(() => ({ method: 'GET', redirect: 'error' })));
+  assert.ok(calls.every(({ options }) => options.method === 'GET' && options.redirect === 'error' && options.signal instanceof AbortSignal));
   assert.deepEqual(evidence.checks.map((check) => check.path), ENDPOINTS);
   assert.deepEqual(evidence.checks.map((check) => check.category), ['health', 'database-health', 'catalog', 'categories']);
   assert.equal(JSON.stringify(evidence).includes(DEFAULT_API_BASE_URL), false);
@@ -83,6 +83,23 @@ test('a failed smoke check records only safe metadata and never retries or write
     method: 'GET', path: '/api/productos', status: 503, timingMs: 0, category: 'unexpected-status', result: 'fail',
   });
   assert.equal(JSON.stringify(evidence).includes('503 response body'), false);
+});
+
+test('a non-settling request times out with redacted failure evidence and no retry', async () => {
+  const calls = [];
+  const evidence = await runProductionSmoke(DEFAULT_API_BASE_URL, {
+    timeoutMs: 10,
+    fetchImpl: (url, options) => {
+      calls.push({ url, options });
+      return new Promise((resolve, reject) => options.signal.addEventListener('abort', () => reject(options.signal.reason), { once: true }));
+    },
+  });
+
+  assert.equal(evidence.result, 'fail');
+  assert.equal(calls.length, 4);
+  assert.ok(calls.every(({ options }) => options.method === 'GET' && options.signal instanceof AbortSignal));
+  assert.ok(evidence.checks.every((check) => check.category === 'timeout' && check.status === null));
+  assert.equal(JSON.stringify(evidence).includes(DEFAULT_API_BASE_URL), false);
 });
 
 test('the forward idempotency migration is non-destructive and its release gate is documented', async () => {

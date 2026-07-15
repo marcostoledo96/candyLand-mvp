@@ -1,4 +1,5 @@
 const DEFAULT_API_BASE_URL = 'https://candyland-mvp-production.up.railway.app';
+const DEFAULT_TIMEOUT_MS = 10_000;
 const ENDPOINTS = ['/api/health', '/api/db/health', '/api/productos', '/api/categories'];
 const SUCCESS_CATEGORIES = ['health', 'database-health', 'catalog', 'categories'];
 
@@ -15,7 +16,7 @@ function parseApiBaseUrl(value) {
   return url.origin;
 }
 
-async function runProductionSmoke(baseUrl, { fetchImpl = fetch, now = () => new Date().toISOString(), monotonicNow = () => performance.now() } = {}) {
+async function runProductionSmoke(baseUrl, { fetchImpl = fetch, now = () => new Date().toISOString(), monotonicNow = () => performance.now(), timeoutMs = DEFAULT_TIMEOUT_MS } = {}) {
   const origin = parseApiBaseUrl(baseUrl);
   const observedAt = now();
   const checks = [];
@@ -23,7 +24,7 @@ async function runProductionSmoke(baseUrl, { fetchImpl = fetch, now = () => new 
   for (const [index, path] of ENDPOINTS.entries()) {
     const startedAt = monotonicNow();
     try {
-      const response = await fetchImpl(new URL(path, origin), { method: 'GET', redirect: 'error' });
+      const response = await fetchImpl(new URL(path, origin), { method: 'GET', redirect: 'error', signal: AbortSignal.timeout(timeoutMs) });
       const status = response.status;
       const success = status >= 200 && status < 300;
       checks.push({
@@ -34,13 +35,13 @@ async function runProductionSmoke(baseUrl, { fetchImpl = fetch, now = () => new 
         category: success ? SUCCESS_CATEGORIES[index] : 'unexpected-status',
         result: success ? 'pass' : 'fail',
       });
-    } catch {
+    } catch (error) {
       checks.push({
         method: 'GET',
         path,
         status: null,
         timingMs: Math.max(0, Math.round(monotonicNow() - startedAt)),
-        category: 'network-error',
+        category: error?.name === 'TimeoutError' ? 'timeout' : 'network-error',
         result: 'fail',
       });
     }
@@ -57,7 +58,9 @@ async function runProductionSmoke(baseUrl, { fetchImpl = fetch, now = () => new 
 
 async function main() {
   const baseUrl = process.argv[2] || DEFAULT_API_BASE_URL;
-  const evidence = await runProductionSmoke(baseUrl);
+  const timeoutMs = Number(process.argv[3] || process.env.SMOKE_TIMEOUT_MS || DEFAULT_TIMEOUT_MS);
+  if (!Number.isSafeInteger(timeoutMs) || timeoutMs <= 0) throw new Error('Smoke timeout must be a positive integer in milliseconds.');
+  const evidence = await runProductionSmoke(baseUrl, { timeoutMs });
   process.stdout.write(`${JSON.stringify(evidence)}\n`);
   if (evidence.result !== 'pass') process.exitCode = 1;
 }
@@ -69,4 +72,4 @@ if (import.meta.url === new URL(process.argv[1], 'file:').href) {
   });
 }
 
-export { DEFAULT_API_BASE_URL, ENDPOINTS, parseApiBaseUrl, runProductionSmoke };
+export { DEFAULT_API_BASE_URL, DEFAULT_TIMEOUT_MS, ENDPOINTS, parseApiBaseUrl, runProductionSmoke };

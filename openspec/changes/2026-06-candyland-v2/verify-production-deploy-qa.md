@@ -75,7 +75,7 @@ Prisma printed its normal `.env` discovery message, but the command injected the
 - `railway.json` exactly uses `npm ci --include=dev && npm run prisma:generate`, then `npx prisma migrate deploy`, then `npm start`, with `/api/health`.
 - `vercel.json` builds `npm run build` to `dist`; it has no `/api` rewrite or DB command. `.vercelignore` excludes legacy JS/CJS API handlers.
 - `scripts/smoke-production.mjs` performs exactly four ordered GETs, sends no body/auth/cookies/query, does not retry, and omits URL/body/header/log/env data from evidence.
-- The smoke script currently has **no application-level timeout or AbortSignal**. A stalled fetch remains pending until an external runner/tool timeout; this was reproduced safely with a non-settling fake fetch.
+- The smoke script applies a native per-request timeout with `AbortSignal.timeout`; a stalled fetch produces redacted failure evidence and a nonzero exit without retries.
 - Bank validity currently means all three trimmed values are present and CBU is not all zero. Missing, blank, and all-zero configurations are CASH-only; valid values enable TRANSFER.
 
 ### TDD Compliance
@@ -114,7 +114,7 @@ Coverage analysis skipped — no coverage command/tool is configured.
 
 **CRITICAL**: None for the repository slice.  
 **WARNING**:
-1. Smoke has no built-in timeout; external execution must bound it.
+1. Smoke timeout coverage is complete; provider-side deployment evidence remains pending.
 2. Bank validation does not reject every malformed or obvious placeholder string; it only enforces present trimmed fields plus non-all-zero CBU. This is outside receipt `review-854a4e825922af36`'s tested missing/blank/all-zero boundary.
 3. Strict TDD safety-net history for the initial PD-01 deletion is incomplete.
 
@@ -132,3 +132,11 @@ Coverage analysis skipped — no coverage command/tool is configured.
 - Exact post-verify surface: `771 additions + 155 deletions = 926 / 3,000`.
 - Projected archive: `801 additions + 155 deletions = 956 / 3,000`, using a fixed 30-line concise archive budget.
 - Next: `sdd-archive` for this repository slice only; keep the parent change open and preserve all production blockers above.
+
+### Codex P2 Correction — 2026-07-15
+
+- Order confirmation now rejects a stored `TRANSFER` when current bank-backed availability is CASH-only, before stock, order, cleanup, or email effects; the stale-transfer regression passes.
+- Payment availability starts pending on first render. The fieldset and Continue action remain disabled until GET settles; delayed GET proves zero payment/address POST, and 503 exposes an alert plus retry while preserving the stored selection.
+- Production smoke now uses native `AbortSignal.timeout` per request (10 seconds by default; positive CLI or non-secret `SMOKE_TIMEOUT_MS` override). A non-settling fake fetch records four redacted `timeout` failures without retry and terminates.
+- Correction verification: root **81 pass + 1 expected historical-RED skip**, backend **12/12 files**, focused smoke **7/7**, lint, build (110 modules), static contracts, differential (**4 pass + 1 expected skip**), Prisma validate/generate with dummy URL, Playwright `{scenarios:16, requests:12, errors:[]}`, public smoke **4/4 GET 200**, and `git diff --check` all passed.
+- No provider configuration, deploy, migration, seed, write QA, Git commit/push, PR mutation, or merge was performed. Production blockers remain unchanged.

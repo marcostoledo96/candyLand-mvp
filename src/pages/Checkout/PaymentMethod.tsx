@@ -11,6 +11,9 @@ const PaymentMethod = () => {
     try { return localStorage.getItem("paymentMethod") === "transferencia" ? "transferencia" : "efectivo"; } catch { return "efectivo"; }
   });
   const [loading, setLoading] = useState(false);
+  const [availabilityLoading, setAvailabilityLoading] = useState(true);
+  const [availabilityError, setAvailabilityError] = useState("");
+  const [availabilityAttempt, setAvailabilityAttempt] = useState(0);
   const [message, setMessage] = useState("");
   const [methods, setMethods] = useState<PaymentMethodCode[]>(["CASH"]);
 
@@ -22,13 +25,19 @@ const PaymentMethod = () => {
 
   useEffect(() => {
     let current = true;
+    setAvailabilityLoading(true);
+    setAvailabilityError("");
     getPaymentMethods().then(({ methods }) => {
       if (!current) return;
       setMethods(methods);
       if (!methods.includes("TRANSFER")) setMethod("efectivo");
-    }).catch(() => {});
+    }).catch(() => {
+      if (current) setAvailabilityError("No pudimos cargar los métodos de pago. Intentá nuevamente.");
+    }).finally(() => {
+      if (current) setAvailabilityLoading(false);
+    });
     return () => { current = false; };
-  }, []);
+  }, [availabilityAttempt]);
 
   const showError = (nextMessage: string) => {
     setMessage(nextMessage);
@@ -36,7 +45,7 @@ const PaymentMethod = () => {
   };
 
   const handleContinue = async () => {
-    if (loading) return;
+    if (loading || availabilityLoading || availabilityError) return;
     const payload = buildPaymentPayload(method);
     if (!payload) return showError("Elegí efectivo o transferencia para continuar.");
     setLoading(true);
@@ -59,8 +68,10 @@ const PaymentMethod = () => {
   return (
     <section className={styles.payment} aria-labelledby="payment-title">
       <h2 id="payment-title">Método de pago</h2>
+      {availabilityLoading && <p role="status">Cargando métodos de pago…</p>}
+      {availabilityError && <div className={styles.messageError} role="alert">{availabilityError} <button type="button" onClick={() => setAvailabilityAttempt((attempt) => attempt + 1)}>Reintentar</button></div>}
       {message && <div ref={errorRef} className={styles.messageError} role="alert" tabIndex={-1}>{message}</div>}
-      <fieldset className={styles.paymentOptions} disabled={loading}>
+      <fieldset className={styles.paymentOptions} disabled={loading || availabilityLoading || Boolean(availabilityError)}>
         <legend>Elegí cómo querés pagar</legend>
         <label className={`${styles.optionCard} ${method === "efectivo" ? styles.selected : ""}`}>
           <input type="radio" name="payment" checked={method === "efectivo"} onChange={() => setMethod("efectivo")} />
@@ -72,7 +83,7 @@ const PaymentMethod = () => {
         </label>}
       </fieldset>
       {method === "efectivo" ? <p className={styles.instruction}>Pagá en efectivo al recibir tu pedido.</p> : <p className={styles.instruction}>Guardaremos tu elección y te mostraremos los datos de transferencia en la confirmación.</p>}
-      <button type="button" onClick={handleContinue} disabled={loading}>{loading ? "Guardando…" : "Continuar"}</button>
+      <button type="button" onClick={handleContinue} disabled={loading || availabilityLoading || Boolean(availabilityError)}>{loading ? "Guardando…" : "Continuar"}</button>
     </section>
   );
 };

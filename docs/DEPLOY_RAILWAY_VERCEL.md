@@ -82,9 +82,11 @@ El seed debe ser idempotente o confirmar antes de borrar datos.
 npm run smoke:production
 # or a different approved public API origin
 npm run smoke:production -- https://example.up.railway.app
+# optional timeout override in milliseconds (default: 10000)
+npm run smoke:production -- https://example.up.railway.app 5000
 ```
 
-The default documented public API origin is `https://candyland-mvp-production.up.railway.app`. The script performs exactly four public GETs: `/api/health`, `/api/db/health`, `/api/productos`, and `/api/categories`. It sends no bodies, credentials, cookies, queries, retries, or writes. Its JSON evidence contains only method, path, status, timing, category, result, timestamp, and the redaction list—never response bodies, headers, URLs, environment values, or logs.
+The default documented public API origin is `https://candyland-mvp-production.up.railway.app`. The script performs exactly four public GETs: `/api/health`, `/api/db/health`, `/api/productos`, and `/api/categories`. Each request uses `AbortSignal.timeout` with a 10-second default; pass a positive millisecond value as the second CLI argument or set non-secret `SMOKE_TIMEOUT_MS` to override it. A timeout is recorded as failed redacted evidence and makes the process exit nonzero. The script sends no bodies, credentials, cookies, queries, retries, or writes. Its JSON evidence contains only method, path, status, timing, category, result, timestamp, and the redaction list—never response bodies, headers, URLs, environment values, or logs.
 
 ## Vercel — frontend
 

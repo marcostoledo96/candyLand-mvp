@@ -241,6 +241,9 @@ app.post('/api/orders/confirm', async (req, res) => {
       if (!normalizedPayment) {
         throw orderConfirmError(400, { error: 'Método de pago inválido' });
       }
+      if (normalizedPayment === 'TRANSFER' && !paymentOptions().methods.includes('TRANSFER')) {
+        throw orderConfirmError(400, { error: 'Método de pago no disponible' });
+      }
 
       // Reject non-positive / non-integer quantities before any stock write.
       const badQty = cart.items.find((it) => !Number.isInteger(it.quantity) || it.quantity <= 0);

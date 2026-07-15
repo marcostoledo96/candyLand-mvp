@@ -29,3 +29,10 @@
 ## Source of truth
 
 - `tasks.md` marks repository verify/archive complete while preserving blockers; `verify-production-deploy-qa.md` remains the independent record. No main spec merge or parent-folder move.
+
+## Codex P2 correction
+
+- Confirmation rechecks live transfer availability before any mutation.
+- Payment availability is an explicit blocking loading/error/retry state with delayed-GET browser evidence.
+- Public smoke requests have a native per-request timeout with redacted failure evidence and no retry.
+- Repository checks passed as recorded in the verify correction; provider and production claims remain pending.

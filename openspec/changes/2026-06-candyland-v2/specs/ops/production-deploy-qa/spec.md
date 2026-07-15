@@ -66,7 +66,7 @@ Vercel MUST deploy only the frontend and MUST use `VITE_API_URL` for the Railway
 
 ### Requirement: PD-05 Public Read-only Smoke
 
-Public production smoke QA MUST use only read-only `GET` requests to health, database health, products, and categories, and MUST record status/result without sensitive payloads.
+Public production smoke QA MUST use only read-only `GET` requests to health, database health, products, and categories, MUST bound every request with a timeout, and MUST record status/result without sensitive payloads.
 
 #### Scenario: Healthy public smoke
 - GIVEN the promoted services are reachable
@@ -74,7 +74,7 @@ Public production smoke QA MUST use only read-only `GET` requests to health, dat
 - THEN each expected success response is recorded as evidence
 
 #### Scenario: Failed public smoke
-- GIVEN a smoke endpoint fails or returns an unexpected status
+- GIVEN a smoke endpoint fails, times out, or returns an unexpected status
 - WHEN QA records the result
 - THEN promotion closure is blocked and no write retry is attempted
 
