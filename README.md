@@ -11,7 +11,7 @@ CandyLand es un e-commerce de golosinas y snacks premium orientado a portfolio.
 
 ## Stack
 - **Frontend:** React + Vite + TypeScript, React Router, `CartContext`.
-- **Datos demo:** `VITE_DATA_MODE=mock` → fixtures + `localStorage` (`src/mocks/`).
+- **Datos demo:** `VITE_DATA_MODE=mock` → fixtures en `src/mocks/` + estado de sesión en `localStorage` (`candyland.mock.v1`).
 - **API opcional:** Express + Prisma + PostgreSQL en `backend/` (`VITE_DATA_MODE=api` + `VITE_API_URL`).
 - **Infra demo:** sólo Vercel (`dist/`). Railway es el camino opcional documentado en `docs/DEPLOY_RAILWAY_VERCEL.md`.
 
@@ -25,16 +25,24 @@ npm run dev            # http://localhost:5173
 
 No hace falta PostgreSQL ni Railway.
 
-**Admin demo:** `admin@candyland.demo` / `demo` → `/admin/login`
+**Admin demo:** `admin@candyland.demo` / `demo` → `/admin/login`  
+(Auth mock de portfolio; no es seguridad real.)
+
+**Reset del estado mock:** borrá la clave `candyland.mock.v1` en el storage del navegador (o usá una ventana privada). Vuelve a cargar fixtures base.
+
+Contrato completo: `docs/DEMO_MOCK.md`.
 
 ## Modo API real (opcional)
 
 ```bash
 # Terminal 1 — backend
 cd backend
-cp .env.example .env   # DATABASE_URL, JWT_SECRET, etc. (sin secretos en git)
+npm install
+cp .env.example .env   # DATABASE_URL, JWT_SECRET, ADMIN_*, etc. (sin secretos en git)
 npm run prisma:generate
-npx prisma migrate dev # o migrate deploy en entornos ya versionados
+npx prisma migrate dev # solo local/dev; en producción/Railway: migrate deploy (nunca db push)
+npm run db:seed        # catálogo/categorías (manual; migrate no siembra datos)
+npm run create-admin   # usa ADMIN_EMAIL / ADMIN_PASSWORD del .env
 npm run dev            # http://127.0.0.1:5050
 
 # Terminal 2 — frontend
@@ -44,7 +52,8 @@ npm run dev            # http://127.0.0.1:5050
 npm run dev
 ```
 
-En builds de producción con `VITE_DATA_MODE=api`, `VITE_API_URL` es obligatorio.
+En builds de producción con `VITE_DATA_MODE=api`, `VITE_API_URL` es obligatorio.  
+Producción/Railway: **solo** `npx prisma migrate deploy` (no `migrate dev`, no `prisma db push`). Runbook: `docs/DEPLOY_RAILWAY_VERCEL.md`.
 
 ## Scripts útiles
 - `npm run dev` · Vite (mock por defecto).
