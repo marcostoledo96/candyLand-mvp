@@ -917,6 +917,7 @@ Repository-only apply needs no further decision. Provider actions, migration, wr
 - [ ] 3.4 Authenticated provider inspection, migration deploy, seed, checkout/admin writes against Railway, linking/config mutation, and destructive rollback QA remain **BLOCKED / deferred** under the demo mock-first pivot (`docs/DEMO_MOCK.md`). Demo UI smoke on Vercel (catalog→checkout→admin) recorded in `verify-demo-mock-first.md` (2026-07-28); parent stays open.
 - [x] 3.5 Run repository-only `sdd-verify`: PASS WITH WARNINGS; 10/10 repository-verifiable scenarios pass, while 6/6 production-only scenarios remain blocked/pending.
 - [x] 3.6 Archive this repository slice only; keep the parent open until PD-01..PD-07 production evidence and PD-08 reconciliation are complete.
+- [x] 3.7 **Demo mock-first slice archived** (`archive-demo-mock-first.md`): PRs #19–#21 on `main`; portfolio path + README reconciled; PD-08 **partial** only. Parent remains open pending Railway/API evidence **or** explicit demo-only closure decision.
 
 Threat-matrix rows are explicitly N/A; no extra threat RED tests.
 
@@ -931,7 +932,7 @@ Threat-matrix rows are explicitly N/A; no extra threat RED tests.
 | PD-05 | Fake-fetch tests prove exactly four GETs/no retry or write; public smoke returned 200 for all four paths with redacted evidence. | Public read-only QA complete for this run; no promotion claim. |
 | PD-06 | Runbook separates repository-local, public read-only, authenticated read-only, and mutation tiers. | BLOCKED: checkout/admin write QA, linking, and CLI installation require approval. |
 | PD-07 | Runbook records backend/frontend/checkout/email rollback boundaries and forward-fix migration policy. | BLOCKED: rollback execution has not been authorized or tested. |
-| PD-08 | README, backend README, deploy guide, index, historical audit label, spec, tasks, and Engram apply-progress reconcile this repository slice. | Parent remains open pending PD-01..PD-07 production evidence and verify/archive. |
+| PD-08 | README, backend README, deploy guide, index, historical audit label, spec, tasks, and Engram apply-progress reconcile this repository slice. **2026-07-28 addendum:** mock-first portfolio path archived in `archive-demo-mock-first.md` (PRs #19–#21); PD-08 remains partial. | Parent remains open pending PD-01..PD-07 **API-mode** production evidence **or** product decision that demo-only is final. |
 
 **Checks:** focused PD tests pass 7/7; public smoke pass 4/4; lint/build pass. Backend stubbed regressions pass. Corrective Strict TDD now makes historical checkout RED conditional: when `origin/main` already satisfies all candidate contracts it skips with the deterministic reason `baseline already satisfies candidate contracts`; candidate GREEN always runs. Root `npm test` now reports 80 pass, 1 expected historical-RED skip, and 0 failures. Provider mutation, migration, seed, write QA, CLI installation/linking, and rollback execution remain intentionally unperformed.
 
