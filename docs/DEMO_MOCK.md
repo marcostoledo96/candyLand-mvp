@@ -58,6 +58,8 @@ Persistencia mock sugerida:
 3. **No** hace falta `VITE_API_URL`, `DATABASE_URL`, Railway ni CORS para la demo.
 4. Smoke demo: abrir home, catálogo, menú, carrito, checkout y admin mock; no curls a `/api` remoto.
 
+Post-merge production smoke (2026-07-28): catalog→cart→checkout confirmed order `DEMO-00001`, admin login + products/orders list — see `openspec/changes/2026-06-candyland-v2/verify-demo-mock-first.md`.
+
 ## Credenciales admin demo
 
 ```text

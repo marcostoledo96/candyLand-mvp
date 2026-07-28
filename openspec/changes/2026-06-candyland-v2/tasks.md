@@ -914,7 +914,7 @@ Repository-only apply needs no further decision. Provider actions, migration, wr
 - [x] 3.1 Update `docs/DEPLOY_RAILWAY_VERCEL.md` and `README.md` with runbook, variable names only, approval tiers, smoke, migration/seed policy, and backend/frontend/checkout/email rollback.
 - [x] 3.2 Reconcile stale parent deploy items; trace PD-01..08 to files/tests/evidence and record skipped provider, migration, seed, write, and rollback actions.
 - [x] 3.3 Run local regression: backend tests, `npm test`, lint, build, Prisma validate/generate, and config assertions; public smoke may run with a supplied URL.
-- [ ] 3.4 Authenticated provider inspection, migration deploy, seed, checkout/admin writes, linking/config mutation, and destructive rollback QA are explicitly **BLOCKED pending user approval/access**.
+- [ ] 3.4 Authenticated provider inspection, migration deploy, seed, checkout/admin writes against Railway, linking/config mutation, and destructive rollback QA remain **BLOCKED / deferred** under the demo mock-first pivot (`docs/DEMO_MOCK.md`). Demo UI smoke on Vercel (catalog→checkout→admin) recorded in `verify-demo-mock-first.md` (2026-07-28); parent stays open.
 - [x] 3.5 Run repository-only `sdd-verify`: PASS WITH WARNINGS; 10/10 repository-verifiable scenarios pass, while 6/6 production-only scenarios remain blocked/pending.
 - [x] 3.6 Archive this repository slice only; keep the parent open until PD-01..PD-07 production evidence and PD-08 reconciliation are complete.
 
