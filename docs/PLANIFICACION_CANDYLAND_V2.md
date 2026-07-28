@@ -17,12 +17,12 @@
 
 Objetivo: sitio usable en Vercel sin Railway.
 
-1. Definir `VITE_DATA_MODE=mock|api` (default mock).
-2. Introducir adapters con los mismos contratos que hoy usa el front (`productos`, `categories`, carrito, checkout, admin).
-3. Fixtures mock + persistencia de sesión (`localStorage`/memoria) para carrito, stock demo y pedidos admin.
-4. Deploy Vercel sólo frontend; sin `DATABASE_URL` ni `VITE_API_URL` obligatorios.
-5. Documentar cómo reactivar backend real sin reescribir UI.
-6. No cerrar OpenSpec parent hasta reconciliar el pivot y la demo verificada; QA Railway queda diferida.
+1. [x] Definir `VITE_DATA_MODE=mock|api` (default mock).
+2. [x] Introducir adapters con los mismos contratos que hoy usa el front (`productos`, `categories`, carrito, checkout, admin).
+3. [x] Fixtures mock + persistencia de sesión (`localStorage`/memoria) para carrito, stock demo y pedidos admin.
+4. [x] Deploy Vercel sólo frontend; sin `DATABASE_URL` ni `VITE_API_URL` obligatorios.
+5. [x] Documentar cómo reactivar backend real sin reescribir UI (`README`, `DEMO_MOCK.md`).
+6. [~] Reconciliar OpenSpec del pivot (`archive-demo-mock-first.md`, PD-08 parcial). **Parent sigue abierto** hasta evidencia Railway/API **o** decisión explícita de demo-only final. QA Railway queda diferida.
 
 Fuera de alcance inmediato: migraciones productivas, seed, CORS Railway, smoke API remoto, write QA contra Postgres.
 

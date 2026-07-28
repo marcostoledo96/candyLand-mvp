@@ -23,4 +23,5 @@
 
 ## Evidencia OpenSpec (change abierta)
 
-- `../openspec/changes/2026-06-candyland-v2/verify-demo-mock-first.md` — smoke Vercel mock post-merge PR #19; Railway diferido; parent abierto.
+- `../openspec/changes/2026-06-candyland-v2/verify-demo-mock-first.md` — smoke Vercel mock (PRs #19–#21); Railway diferido; parent abierto.
+- `../openspec/changes/2026-06-candyland-v2/archive-demo-mock-first.md` — archivo del slice demo mock-first; PD-08 parcial; cierre del parent pendiente de decisión.

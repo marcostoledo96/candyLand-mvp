@@ -1,13 +1,14 @@
 # Verify — Demo mock-first (post-merge production smoke)
 
-**Date:** 2026-07-28  
+**Date:** 2026-07-28 (updated after README PR #21)  
 **Parent:** `2026-06-candyland-v2` (remains open)  
-**Deploy:** `https://candy-land-mvp.vercel.app/` on `main` @ `07b7690` (PR #19)  
+**Deploy:** `https://candy-land-mvp.vercel.app/` on `main` @ `642c404` (includes PRs #19–#21)  
 **Mode:** `VITE_DATA_MODE` default mock (no Railway/DB required)
 
 ## Verdict
 
-**PASS WITH NOTES** for the portfolio demo path.
+**PASS WITH NOTES** for the portfolio demo path.  
+Slice archived in `archive-demo-mock-first.md` (parent still open).
 
 ## Production UI smoke (browser)
 
@@ -27,20 +28,26 @@ No secrets, response bodies, or PII beyond demo labels were recorded.
 
 ## Automated checks (repository)
 
-Re-verified 2026-07-28 during PR #20 audit:
+Re-verified 2026-07-28 during PR #20 audit; README path reconciled in PR #21:
 
 - `npm run test:demo-mock` — **4/4**
 - Full `npm test` — **85 pass**, 1 expected skip (historical RED), **0 fail**
 - `npm run build` — PASS
 - Production bundle contains mock fixtures (`Frutales`, `candyland.mock`); no `railway.app` in client JS
 
+## Docs reconciled after smoke
+
+- Root `README.md` leads with mock-first onboarding (install, admin demo, `candyland.mock.v1` reset, API optional with seed/`create-admin`/prod migrate rules).
+- `docs/DEMO_MOCK.md`, `docs/DECISIONES_CERRADAS.md`, `docs/INDEX.md`.
+
 ## Deferred (parent stays open)
 
-- Railway provider config / migrate / API-mode QA (`tasks.md` item 3.4)  
-- Parent OpenSpec closure (PD-08) until API path evidence exists **or** product decides demo-only is final  
+- Railway provider config / migrate / API-mode QA (`tasks.md` item 3.4)
+- Full PD-08 parent closure until API path evidence exists **or** product decides demo-only is final
 
 ## Source of truth
 
-- `docs/DEMO_MOCK.md`  
-- `docs/DECISIONES_CERRADAS.md` (pivot 2026-07-28)  
-- PR #19 merge commit `07b7690`
+- `docs/DEMO_MOCK.md`
+- `docs/DECISIONES_CERRADAS.md` (pivot 2026-07-28)
+- `archive-demo-mock-first.md`
+- PR #19 merge `07b7690`; docs PRs #20 / #21; tip `642c404`
