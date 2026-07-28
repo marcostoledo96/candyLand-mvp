@@ -1,77 +1,76 @@
 # CandyLand
 
-CandyLand es un e-commerce full stack para golosinas y snacks premium. El objetivo es mostrar en GitHub y en mi portafolio un proyecto colaborativo con un frontend veloz, un backend sólido y un pipeline de deploy moderno.
+CandyLand es un e-commerce de golosinas y snacks premium orientado a portfolio.  
+**Demo en producción:** https://candy-land-mvp.vercel.app/ (frontend con datos mock, sin backend ni base de datos).
 
-## 🚀 Por qué destaca
-- Catálogo navegable con cards y filtros básicos.
-- Carrito persistente con actualización en tiempo real mediante Context API.
-- Checkout guiado que calcula totales y admite transferencia o efectivo.
-- API REST que centraliza productos, carrito y órdenes usando Express + Prisma sobre PostgreSQL.
-- Objetivo v2: infraestructura separada con frontend en Vercel, backend y base de datos en Railway.
+## Por qué destaca
+- Catálogo con filtros, carrito y checkout (efectivo / transferencia).
+- Panel admin demo: productos, categorías y pedidos con restauración de stock al cancelar.
+- Capa de datos conmutable: **mock** (default) o **API real** (`backend/` Express + Prisma).
+- Deploy portfolio en Vercel en un comando; Railway queda opcional.
 
-## 🧱 Stack principal
-- **Frontend:** React 19 + Vite + TypeScript, React Router y estado global en `CartContext`. Las llamadas a la API se encapsulan en `src/lib/api.ts` usando `VITE_API_URL`.
-- **Backend:** Express + Prisma sobre PostgreSQL. La v2 apunta a Railway como backend long-running + PostgreSQL.
-- **Infraestructura:** Vercel is frontend-only (`dist/`); Railway runs the long-lived Express API and Railway PostgreSQL.
+## Stack
+- **Frontend:** React + Vite + TypeScript, React Router, `CartContext`.
+- **Datos demo:** `VITE_DATA_MODE=mock` → fixtures + `localStorage` (`src/mocks/`).
+- **API opcional:** Express + Prisma + PostgreSQL en `backend/` (`VITE_DATA_MODE=api` + `VITE_API_URL`).
+- **Infra demo:** sólo Vercel (`dist/`). Railway es el camino opcional documentado en `docs/DEPLOY_RAILWAY_VERCEL.md`.
 
-> Nota histórica: una versión anterior desplegaba el backend como función serverless en Vercel (`api/*`). Esa superficie está **deprecada para v2**; la API oficial debe vivir en Railway.
+## Cómo correrlo (demo mock — recomendado)
 
-## 🔩 Arquitectura en breve
-- SPA alojada en `src/` con componentes desacoplados (`components/`, `pages/`, `layout/`) para Home, Catálogo, Carrito y Checkout.
-- Backend en `backend/` con `server.js` (modo long-running) y `app.js` (app Express exportable). Para Railway debe escuchar `process.env.PORT` en host `0.0.0.0`.
-- `api/*` remains a deprecated rollback artifact and is excluded from Vercel deployment; it is not the official API.
-- `vercel.json` builds only the frontend and keeps an SPA fallback with no `/api` rewrite.
-- Root `railway.json` versions the backend release order: Prisma generate during build, approved `prisma migrate deploy` before start, then `npm start` and `/api/health`.
+```bash
+npm install
+cp .env.example .env   # VITE_DATA_MODE=mock por defecto
+npm run dev            # http://localhost:5173
+```
 
-## 📦 Scripts útiles (raíz)
-- `npm run lint` · pasa ESLint (regla bloqueante).
-- `npm run build` · genera el bundle de producción en `dist/`.
-- `npm run dev` · levanta Vite con proxy automático hacia `/api` (`http://127.0.0.1:5050`).
-- `npm run preview` · sirve el build local.
-- El `postinstall` crea Prisma Client al ejecutar `npm install`.
+No hace falta PostgreSQL ni Railway.
 
-## 🛠️ Cómo correrlo localmente
-1. Cloná el repo y ejecutá `npm install` en la raíz.
-2. Backend (`backend/`), en una terminal aparte:
-   - Copiá `.env.example` a `.env` y completá `DATABASE_URL` (PostgreSQL local o Railway) y `PORT` si querés algo distinto de 5050.
-   - `npm run prisma:generate` para generar el cliente Prisma.
-   - Migraciones (desarrollo): `npx prisma migrate dev` cuando estés creando cambios de schema. En producción se usa `npx prisma migrate deploy` (Railway), **no** `prisma db push`.
-   - Seed manual: `npm run db:seed` (sólo si la base está vacía).
-   - `npm run dev` (o `npm --prefix backend run dev` desde la raíz) para levantar la API long-running en `http://127.0.0.1:5050`.
-3. Frontend, en otra terminal:
-   - `npm run dev` desde la raíz y abrí `http://localhost:5173`.
-   - En desarrollo, Vite proxea `/api` al backend local (`http://127.0.0.1:5050`); en producción el frontend llama a `VITE_API_URL` (Railway).
+**Admin demo:** `admin@candyland.demo` / `demo` → `/admin/login`
 
-## ☁️ Deploy
-- **Vercel (frontend):** runs only `npm run build` → `dist/`; no migrations, seed, database push, or API functions. Required variable name: `VITE_API_URL`.
-- **Railway (backend + PostgreSQL):** uses Root Directory `backend` and the root Config File `/railway.json`. The release runs build → approved `npx prisma migrate deploy` → `npm start`; seed remains manual.
-- **Public read-only smoke:** `npm run smoke:production` checks only health, DB health, products, and categories, emitting redacted JSON evidence.
-- **Approval gate:** provider configuration, deployment, migration, seed, checkout/admin write QA, CLI installation/linking, and rollback execution are not performed by repository checks and require separate authorization.
-- Ver `docs/DEPLOY_RAILWAY_VERCEL.md` para el checklist completo de deploy desde cero.
+## Modo API real (opcional)
 
-## 🔐 Secretos y variables de entorno
-- **No se commitean secretos.** Los valores sensibles (`DATABASE_URL`, `JWT_SECRET`, `RESEND_API_KEY`, etc.) viven en:
-  - Local: `backend/.env` (ignorado por git).
-  - Producción: variables de entorno de Railway (backend) y Vercel (frontend).
-- `backend/.env.example` contiene sólo placeholders y nombres de variables esperadas, nunca valores reales.
+```bash
+# Terminal 1 — backend
+cd backend
+cp .env.example .env   # DATABASE_URL, JWT_SECRET, etc. (sin secretos en git)
+npm run prisma:generate
+npx prisma migrate dev # o migrate deploy en entornos ya versionados
+npm run dev            # http://127.0.0.1:5050
 
-## 🤝 Trabajo colaborativo
-CandyLand nació como un esfuerzo conjunto. Planeamos el alcance en tableros compartidos, hicimos pair programming en los flujos críticos (carrito y checkout) y revisiones cruzadas en cada PR para asegurar consistencia. Documenté las decisiones de arquitectura, definimos acuerdos de código y dejamos issues descriptivos para que cualquier integrante pueda continuar el trabajo sin fricción. El resultado es un proyecto que demuestra capacidad técnica y también mi forma de liderar y entregar en entornos colaborativos.
+# Terminal 2 — frontend
+# En la raíz, .env:
+# VITE_DATA_MODE=api
+# VITE_API_URL=http://127.0.0.1:5050
+npm run dev
+```
 
-## 🗂️ Estructura rápida
+En builds de producción con `VITE_DATA_MODE=api`, `VITE_API_URL` es obligatorio.
+
+## Scripts útiles
+- `npm run dev` · Vite (mock por defecto).
+- `npm run build` · bundle en `dist/`.
+- `npm run lint` · ESLint.
+- `npm test` · suite Node (incluye `test:demo-mock`).
+- `npm run smoke:production` · GETs públicos a un API real (modo Railway).
+
+## Deploy
+- **Demo / portfolio:** Vercel → `npm run build` → `dist/`. Variable típica: `VITE_DATA_MODE=mock` (o ausente).
+- **API opcional:** Railway con Root Directory `backend` y Config File `/railway.json`. Ver `docs/DEPLOY_RAILWAY_VERCEL.md`.
+- Contrato mock: `docs/DEMO_MOCK.md`. Decisiones: `docs/DECISIONES_CERRADAS.md`.
+
+## Secretos
+No se commitean `.env`. Ejemplos: `.env.example` (frontend) y `backend/.env.example`.
+
+## Estructura rápida
 ```
 .
-├── src/                # SPA con páginas (Home, Catálogo, Carrito, Checkout) y Context del carrito
-├── backend/            # Express + Prisma sobre PostgreSQL, API REST long-running para Railway
-├── api/                # Bridge serverless legacy (deprecado para v2) — NO usar como API oficial
-├── public/             # Assets estáticos para Vite
-├── vercel.json         # Configuración de build frontend-only y fallback SPA
-├── docs/               # Documentación de arquitectura, deploy y auditoría
-└── README.md
+├── src/           # SPA + lib API/admin
+├── src/mocks/     # Fixtures y store demo
+├── backend/       # Express + Prisma (modo API opcional)
+├── docs/          # DEMO_MOCK, decisiones, deploy Railway
+├── openspec/      # Change abierta 2026-06-candyland-v2
+└── vercel.json    # Frontend-only
 ```
 
-¿Querés ir más a fondo? Mirá `backend/README.md` para los detalles del schema y endpoints, y `docs/DEPLOY_RAILWAY_VERCEL.md` para el deploy.
-
----
-
-Listo para escalar nuevas features (auth admin, dashboards, analytics) y abierto a contribuciones. Si querés colaborar, abrí un issue o escribime por la red social que prefieras.
+## Trabajo colaborativo
+CandyLand combina alcance de e-commerce, admin y documentación SDD/OpenSpec para que el proyecto sea reproducible en portfolio y en equipo.
