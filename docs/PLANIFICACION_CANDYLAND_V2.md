@@ -1,11 +1,30 @@
-# Planificación CandyLand MVP v2 — React + Node + PostgreSQL + Railway
+# Planificación CandyLand MVP v2 — React + demo mock (backend opcional)
 
 **Fecha:** 2026-06-29  
+**Actualizado:** 2026-07-28 — pivot **demo mock-first**  
 **Proyecto principal:** `marcostoledo96/candyLand-mvp`  
 **Proyecto de referencia visual/assets:** `macarenadaianaleiva/tienda-candyland`  
 **Deploy actual:** `https://candy-land-mvp.vercel.app/`  
 **Marca final:** `CandyLand`  
 **Modo visual:** sólo modo claro
+
+> **Objetivo vigente:** demo de portfolio en Vercel **sin backend ni base de datos**, con mocks.  
+> El código `backend/` (Express/Prisma/PostgreSQL) se **conserva** para activar modo API real cuando se configure (`VITE_DATA_MODE=api` + `VITE_API_URL`).  
+> Fuente de verdad del pivot: `docs/DEMO_MOCK.md` y `docs/DECISIONES_CERRADAS.md`.  
+> Las fases Railway/Postgres de este documento quedan como **camino opcional (modo API)**, no como gate del deploy demo.
+
+## 0. Fase vigente — Demo mock-first (2026-07-28)
+
+Objetivo: sitio usable en Vercel sin Railway.
+
+1. Definir `VITE_DATA_MODE=mock|api` (default mock).
+2. Introducir adapters con los mismos contratos que hoy usa el front (`productos`, `categories`, carrito, checkout, admin).
+3. Fixtures mock + persistencia de sesión (`localStorage`/memoria) para carrito, stock demo y pedidos admin.
+4. Deploy Vercel sólo frontend; sin `DATABASE_URL` ni `VITE_API_URL` obligatorios.
+5. Documentar cómo reactivar backend real sin reescribir UI.
+6. No cerrar OpenSpec parent hasta reconciliar el pivot y la demo verificada; QA Railway queda diferida.
+
+Fuera de alcance inmediato: migraciones productivas, seed, CORS Railway, smoke API remoto, write QA contra Postgres.
 
 ## 1. Contexto de trabajo local
 
@@ -29,51 +48,58 @@ Regla principal: el proyecto final se implementa siempre en **React**, combinand
 
 | Tema | Decisión |
 |---|---|
-| ORM | Mantener Prisma. |
-| Backend | Node.js + Express dentro de la misma repo, usando `backend/` como root de Railway. |
-| Base de datos | PostgreSQL exclusivamente en Railway. Neon queda deprecado. |
-| Seed | Manual/controlado, no automático en cada deploy. |
-| Admin productos | Sí, crear panel admin para productos, precios, stock, categorías e imágenes. |
-| Imágenes de productos | Se cargan mediante URL. No hay upload de archivos en esta etapa. |
-| Stock | Real, persistido y descontado/validado en backend. |
-| Pedidos | Guardar pedidos en PostgreSQL aunque el pago sea manual. |
-| Emails | Sí. Implementar de forma simple y desacoplada. Recomendado: Resend si hay dominio verificado; fallback SMTP/Nodemailer si se busca demo rápida. |
+| Modo demo | **Mock-first.** Sin backend/DB en el deploy de portfolio. |
+| Modo API opcional | `VITE_DATA_MODE=api` + `VITE_API_URL`; usa `backend/` existente. |
+| ORM | Mantener Prisma **en repo** para modo API; no usado en demo mock. |
+| Backend | Node.js + Express en `backend/` **conservado**; no obligatorio en demo. |
+| Base de datos | PostgreSQL Railway **sólo modo API**. Neon deprecado. Demo: sin DB. |
+| Seed | Manual/controlado cuando exista DB. |
+| Admin productos | Sí (mock en demo; real en modo API). Imágenes por URL. |
+| Imágenes de productos | URL. No upload de archivos en esta etapa. |
+| Stock | Simulado en demo; real en modo API. |
+| Pedidos | Mock de sesión en demo; PostgreSQL en modo API. |
+| Emails | Simulado en demo; noop/Resend en modo API. |
 | WhatsApp | No enviar pedidos por WhatsApp. |
 | Pagos | Transferencia o efectivo. No Mercado Pago ni tarjeta en esta etapa. |
-| Rutas | Mantener la ruta actual de catálogo y agregar las rutas faltantes de Macarena. Recomendado: `/catalogo` canónica + aliases opcionales `/tienda` y `/nuestros-dulces`. |
+| Rutas | Mantener catálogo + rutas Macarena. `/catalogo` canónica + aliases opcionales. |
 | Diseño | Combinar lo mejor de ambos proyectos, siempre React. |
 | Páginas obligatorias | Todas: Contacto, Tutoriales, Menú, Franquicias, Trabajá con nosotros, Home, Catálogo, Carrito, Checkout, Admin. |
-| Nuestro menú | Debe salir de la API, no ser hardcodeado definitivo. |
+| Nuestro menú | Contrato de categorías (mock o API), no hardcode suelto en UI. |
 | Tutoriales | Sólo tarjetas visuales para portfolio. |
 | Detalle de producto | No crear `/producto/:id` por ahora. |
 | Marca | Usar CandyLand en todos los textos. |
-| Logo | Revisar si hay logo útil en el proyecto de Macarena; si existe, adaptarlo. Si no, mantener logo/texto actual de CandyLand. |
+| Logo | Revisar Macarena; si sirve, adaptar. |
 | Assets Macarena | Se pueden usar en deploy público. |
-| Deploy frontend | Vercel. |
-| Deploy backend | Railway. |
-| Dominio CORS | `https://candy-land-mvp.vercel.app/` y localhost en desarrollo. |
-| Dominio propio | No por ahora; usar el dominio anterior de Vercel. |
-| Railway auto-deploy | Sí, desde `main`. |
-| Vercel previews | Sí, previews por branch. |
-| Documentación deploy | Sí, dejar paso a paso reproducible. |
+| Deploy frontend | Vercel (único requerido para demo). |
+| Deploy backend | Railway **opcional** (modo API). |
+| Dominio CORS | Sólo relevante en modo API. |
+| Dominio propio | No por ahora; dominio Vercel actual. |
+| Railway auto-deploy | Diferido / opcional. |
+| Vercel previews | Sí. |
+| Documentación deploy | `DEMO_MOCK.md` (demo) + `DEPLOY_RAILWAY_VERCEL.md` (API). |
 
 ---
 
 ## 3. Objetivo de la versión v2
 
-La versión v2 debe transformar CandyLand de un MVP e-commerce funcional a un proyecto más completo para portfolio, con mejor experiencia visual, pantallas institucionales, panel admin y backend más profesional.
+La versión v2 debe transformar CandyLand en un proyecto de portfolio con experiencia visual completa, pantallas institucionales y flujos de compra/admin **demostrables sin infraestructura de backend**.
 
-Objetivos principales:
+Objetivos principales (vigentes):
 
-1. Separar responsabilidades: frontend en Vercel, backend en Railway, base PostgreSQL en Railway.
-2. Quitar dependencia de Neon y de `/api` serverless en Vercel.
-3. Mantener React + Vite + TypeScript como frontend.
-4. Mantener Node.js + Express + Prisma como backend.
-5. Agregar rutas y pantallas del proyecto de Macarena.
-6. Crear admin real para productos, categorías, stock e imágenes por URL.
-7. Guardar pedidos reales en PostgreSQL.
-8. Enviar email al crear pedido, sin bloquear la compra si el email falla.
-9. Dejar documentación `AGENTS.md`, OpenSpec, Engram y CodeGraph para que OpenCode trabaje con menos pérdida de contexto.
+1. Demo en Vercel con **mocks** (catálogo, menú, carrito, checkout, admin).
+2. Capa de adapters para poder apuntar a API real sin reescribir UI.
+3. Conservar `backend/` Express/Prisma como implementación opcional.
+4. Quitar dependencia de Neon y no reactivar `/api` serverless en Vercel.
+5. Mantener React + Vite + TypeScript.
+6. Rutas y pantallas del proyecto de Macarena.
+7. Admin usable en demo (mock); stock/pedidos reales solo en modo API.
+8. Documentación `AGENTS.md`, OpenSpec, Engram y CodeGraph al día con el pivot.
+
+Objetivos diferidos (modo API / no bloquean la demo):
+
+- Deploy Railway + PostgreSQL.
+- Pedidos persistidos y emails reales.
+- QA productiva contra API remota.
 
 ---
 

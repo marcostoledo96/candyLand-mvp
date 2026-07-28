@@ -2,6 +2,8 @@ import React, { useState } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { loginAdmin, AdminApiError } from '../../lib/adminApi.js';
 import { setAdminToken, AdminAuthError } from '../../lib/adminAuth.js';
+import { isMockMode } from '../../lib/dataMode.js';
+import { MOCK_ADMIN } from '../../mocks/fixtures.js';
 import shared from '../PublicRoutes/PublicRoutes.module.css';
 
 const AdminLogin: React.FC = () => {
@@ -11,9 +13,10 @@ const AdminLogin: React.FC = () => {
   const from = typeof requestedFrom === 'string' && requestedFrom.startsWith('/admin/')
     ? requestedFrom
     : '/admin/productos';
+  const demoMode = isMockMode();
 
-  const [email, setEmail] = useState('');
-  const [password, setPassword] = useState('');
+  const [email, setEmail] = useState(demoMode ? MOCK_ADMIN.email : '');
+  const [password, setPassword] = useState(demoMode ? MOCK_ADMIN.password : '');
   const [status, setStatus] = useState<'idle' | 'loading' | 'error'>('idle');
   const [error, setError] = useState('');
 
@@ -47,6 +50,11 @@ const AdminLogin: React.FC = () => {
     <section className={shared.state}>
       <h1 className={shared.stateTitle}>Panel de administración</h1>
       <p className={shared.stateText}>Ingresá tus credenciales para acceder al panel.</p>
+      {demoMode && (
+        <p className={shared.stateText} role="note">
+          Demo mock: {MOCK_ADMIN.email} / {MOCK_ADMIN.password}
+        </p>
+      )}
       <form className={shared.form} onSubmit={handleSubmit} style={{ margin: '0 auto' }}>
         <div className={shared.field}>
           <label htmlFor="admin-email">Email</label>
