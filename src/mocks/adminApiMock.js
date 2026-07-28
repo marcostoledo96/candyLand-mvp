@@ -4,6 +4,7 @@ import { MOCK_ADMIN } from './fixtures.js';
 import {
   assertMockAdminToken,
   getMockState,
+  registerMockAdminToken,
   saveMockState,
   slugify,
   toAdminProduct,
@@ -40,7 +41,9 @@ export function createMockAdminToken(email = MOCK_ADMIN.email) {
 
 export function mockLoginAdmin({ email, password }) {
   if (email?.trim() === MOCK_ADMIN.email && password === MOCK_ADMIN.password) {
-    return delay({ token: createMockAdminToken(email.trim()), user: { ...MOCK_ADMIN.user } });
+    const token = createMockAdminToken(email.trim());
+    registerMockAdminToken(token);
+    return delay({ token, user: { ...MOCK_ADMIN.user } });
   }
   throw new AdminAuthError('Credenciales inválidas');
 }

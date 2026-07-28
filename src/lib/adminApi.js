@@ -5,7 +5,7 @@
 import { expireAdminSession, AdminAuthError } from './adminAuth.js';
 import { AdminApiError } from './adminApiError.js';
 import { extractApiError } from './adminValidation.js';
-import { isMockMode } from './dataMode.js';
+import { isMockMode, getApiBaseUrl } from './dataMode.js';
 import {
   mockLoginAdmin,
   mockGetAdminMe,
@@ -26,15 +26,18 @@ import {
 export { AdminApiError } from './adminApiError.js';
 
 const ENV = (import.meta || {}).env || {};
-const API_URL = ENV.VITE_API_URL ?? '';
 const IS_DEV = !!ENV.DEV;
+
+function apiBase() {
+  return getApiBaseUrl();
+}
 
 async function fetchAdmin(input, init) {
   try {
     return await fetch(input, init);
   } catch (err) {
     const isNetworkErr = err && (err.name === 'TypeError' || /fetch|network|failed/i.test(String(err.message || '')));
-    const isDevRelativeApi = IS_DEV && API_URL === '' && input.startsWith('/api');
+    const isDevRelativeApi = IS_DEV && !ENV.VITE_API_URL && input.startsWith('/api');
     if (isNetworkErr && isDevRelativeApi) {
       try { return await fetch(`http://127.0.0.1:5050${input}`, init); } catch { /* fall through */ }
     }
@@ -52,7 +55,7 @@ function isAccountStatusVerificationFailure(body) {
 }
 
 async function adminRequest(token, path, init = {}) {
-  const res = await fetchAdmin(`${API_URL}${path}`, { ...init, headers: authHeader(token) });
+  const res = await fetchAdmin(`${apiBase()}${path}`, { ...init, headers: authHeader(token) });
   if (res.status === 204) return undefined;
   if (res.ok) return res.json();
   const body = await res.json().catch(async () => ({ error: await res.text().catch(() => '') }));
@@ -66,7 +69,7 @@ async function adminRequest(token, path, init = {}) {
 
 export async function loginAdmin({ email, password }) {
   if (isMockMode()) return mockLoginAdmin({ email, password });
-  const res = await fetchAdmin(`${API_URL}/api/admin/login`, {
+  const res = await fetchAdmin(`${apiBase()}/api/admin/login`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ email, password }),

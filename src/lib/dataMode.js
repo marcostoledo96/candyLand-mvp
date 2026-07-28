@@ -21,3 +21,20 @@ export function isMockMode() {
 export function isApiMode() {
   return getDataMode() === 'api';
 }
+
+/**
+ * Base URL for real API mode.
+ * - mock → ''
+ * - api + VITE_API_URL → trimmed origin
+ * - api in node tests / Vite DEV without URL → '' (relative `/api`, existing stubs/proxy)
+ * - api in Vite production without URL → throw (fail closed)
+ * @returns {string}
+ */
+export function getApiBaseUrl() {
+  if (isMockMode()) return '';
+  const url = String(ENV.VITE_API_URL || '').trim().replace(/\/$/, '');
+  if (url) return url;
+  const outsideVite = ENV.MODE === undefined && ENV.DEV === undefined && ENV.PROD === undefined;
+  if (outsideVite || ENV.DEV) return '';
+  throw new Error('VITE_API_URL is required when VITE_DATA_MODE=api');
+}

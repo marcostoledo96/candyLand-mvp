@@ -1,6 +1,6 @@
 import { MOCK_CATEGORIES, MOCK_PRODUCTS } from './fixtures.js';
 
-const STORAGE_KEY = 'candyland.mock.v1';
+export const STORAGE_KEY = 'candyland.mock.v1';
 
 function clone(value) {
   return JSON.parse(JSON.stringify(value));
@@ -23,6 +23,7 @@ function createInitialState() {
     carts: {},
     orders: [],
     confirmations: {},
+    adminTokens: [],
     nextIds: {
       product: products.reduce((max, product) => Math.max(max, product.id), 0) + 1,
       category: categories.reduce((max, category) => Math.max(max, category.id), 0) + 1,
@@ -34,13 +35,35 @@ function createInitialState() {
   };
 }
 
+function isValidState(state) {
+  if (!state || typeof state !== 'object') return false;
+  if (!Array.isArray(state.products) || !Array.isArray(state.categories)) return false;
+  if (!state.carts || typeof state.carts !== 'object' || Array.isArray(state.carts)) return false;
+  if (!Array.isArray(state.orders)) return false;
+  if (!state.confirmations || typeof state.confirmations !== 'object' || Array.isArray(state.confirmations)) return false;
+  if (!state.nextIds || typeof state.nextIds !== 'object') return false;
+  const required = ['product', 'category', 'order', 'cartItem', 'form', 'customer'];
+  if (!required.every((key) => Number.isFinite(state.nextIds[key]))) return false;
+  return true;
+}
+
+function normalizeState(state) {
+  const next = clone(state);
+  if (!Array.isArray(next.adminTokens)) next.adminTokens = [];
+  for (const product of next.products) {
+    product.category = categoryNameById(next.categories, product.categoryId);
+    if (product.imageUrl == null && product.image) product.imageUrl = product.image;
+  }
+  return next;
+}
+
 function readStorage() {
   try {
     const raw = globalThis.localStorage?.getItem(STORAGE_KEY);
     if (!raw) return null;
     const parsed = JSON.parse(raw);
-    if (!parsed || typeof parsed !== 'object') return null;
-    return parsed;
+    if (!isValidState(parsed)) return null;
+    return normalizeState(parsed);
   } catch {
     return null;
   }
@@ -74,6 +97,11 @@ export function resetMockState() {
   return memoryState;
 }
 
+/** @internal test helper */
+export function __setMockStateForTests(state) {
+  memoryState = state;
+}
+
 export function slugify(name) {
   return String(name || '')
     .normalize('NFD')
@@ -91,7 +119,8 @@ export function newCartId() {
 
 export function ensureCart(cartId) {
   const state = getMockState();
-  const id = cartId && state.carts[cartId] ? cartId : newCartId();
+  const trimmed = typeof cartId === 'string' ? cartId.trim() : '';
+  const id = trimmed || newCartId();
   if (!state.carts[id]) {
     state.carts[id] = {
       items: [],
@@ -109,16 +138,23 @@ export function buildCartDto(cartId) {
   if (!cart) {
     return { cartId, items: [], totalItems: 0, totalCents: 0 };
   }
-  const items = cart.items.map((item) => ({
-    id: item.id,
-    productId: item.productId,
-    title: item.title,
-    description: item.description,
-    priceCents: item.priceCents,
-    image: item.image,
-    quantity: item.quantity,
-    subtotalCents: item.priceCents * item.quantity,
-  }));
+  const items = cart.items.map((item) => {
+    const product = state.products.find((entry) => entry.id === item.productId);
+    const priceCents = product ? product.priceCents : item.priceCents;
+    const title = product?.title ?? item.title;
+    const description = product?.description ?? item.description;
+    const image = product ? (product.imageUrl || product.image || null) : item.image;
+    return {
+      id: item.id,
+      productId: item.productId,
+      title,
+      description,
+      priceCents,
+      image,
+      quantity: item.quantity,
+      subtotalCents: priceCents * item.quantity,
+    };
+  });
   return {
     cartId,
     items,
@@ -153,6 +189,28 @@ export function toAdminProduct(product, categories = getMockState().categories) 
   }, categories);
 }
 
+export function registerMockAdminToken(token) {
+  const state = getMockState();
+  if (!state.adminTokens.includes(token)) {
+    state.adminTokens.push(token);
+    saveMockState();
+  }
+}
+
 export function assertMockAdminToken(token) {
-  return typeof token === 'string' && token.split('.').length === 3 && token.endsWith('.mock');
+  if (typeof token !== 'string' || token.split('.').length !== 3 || !token.endsWith('.mock')) return false;
+  const state = getMockState();
+  if (!state.adminTokens.includes(token)) return false;
+  try {
+    const payloadPart = token.split('.')[1].replace(/-/g, '+').replace(/_/g, '/');
+    const padded = payloadPart.padEnd(payloadPart.length + ((4 - (payloadPart.length % 4)) % 4), '=');
+    const json = typeof globalThis.atob === 'function'
+      ? globalThis.atob(padded)
+      : Buffer.from(padded, 'base64').toString('utf8');
+    const payload = JSON.parse(json);
+    if (!payload || typeof payload.exp !== 'number') return false;
+    return Math.floor(Date.now() / 1000) < payload.exp;
+  } catch {
+    return false;
+  }
 }

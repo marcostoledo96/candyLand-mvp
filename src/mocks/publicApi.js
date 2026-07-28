@@ -98,9 +98,21 @@ export function mockDeleteCartItem(cartItemId, cartId) {
 }
 
 export function mockPostCheckout(payload, cartId) {
+  const required = ['nombre', 'telefono', 'direccion', 'localidad', 'provincia', 'codigoPostal'];
+  const missing = required.filter((field) => !String(payload?.[field] || '').trim());
+  if (missing.length) {
+    httpError(400, { error: 'Completá los campos requeridos.', missing });
+  }
   const id = ensureCart(cartId);
   const cart = getMockState().carts[id];
-  cart.checkout = { ...payload };
+  cart.checkout = {
+    nombre: String(payload.nombre).trim(),
+    telefono: String(payload.telefono).trim(),
+    direccion: String(payload.direccion).trim(),
+    localidad: String(payload.localidad).trim(),
+    provincia: String(payload.provincia).trim(),
+    codigoPostal: String(payload.codigoPostal).trim(),
+  };
   saveMockState();
   return delay({ cartId: id });
 }
@@ -130,11 +142,14 @@ export function mockPostPaymentMethod(method, cartId) {
 export function mockPostConfirmOrder(cartId, confirmationKey) {
   const state = getMockState();
   const replay = state.confirmations[confirmationKey];
-  if (replay) {
+  if (replay?.response) {
     if (cartId && replay.cartId !== cartId) {
       httpError(409, { error: 'Idempotency-Key no corresponde al carrito' });
     }
     return delay(cloneResponse(replay.response));
+  }
+  if (replay?.status === 'pending') {
+    httpError(409, { error: 'Confirmación en curso. Reintentá en unos segundos.' });
   }
 
   if (!cartId || !state.carts[cartId]) httpError(404, { error: 'Carrito no encontrado' });
@@ -161,14 +176,28 @@ export function mockPostConfirmOrder(cartId, confirmationKey) {
   const orderId = state.nextIds.order++;
   const customerId = state.nextIds.customer++;
   const orderNumber = `DEMO-${String(orderId).padStart(5, '0')}`;
-  const items = cart.items.map((item) => ({
-    productId: item.productId,
-    quantity: item.quantity,
-    priceCents: item.priceCents,
-    subtotalCents: item.priceCents * item.quantity,
+  const pricedItems = cart.items.map((item) => {
+    const product = state.products.find((entry) => entry.id === item.productId);
+    const priceCents = product.priceCents;
+    return {
+      productId: item.productId,
+      productTitle: product.title,
+      quantity: item.quantity,
+      priceCents,
+      subtotalCents: priceCents * item.quantity,
+    };
+  });
+  const items = pricedItems.map(({ productId, quantity, priceCents, subtotalCents }) => ({
+    productId,
+    quantity,
+    priceCents,
+    subtotalCents,
   }));
   const totalCents = items.reduce((sum, item) => sum + item.subtotalCents, 0);
   const now = new Date().toISOString();
+
+  // Claim the idempotency key before mutating durable demo state.
+  state.confirmations[confirmationKey] = { cartId, status: 'pending' };
 
   for (const item of cart.items) {
     const product = state.products.find((entry) => entry.id === item.productId);
@@ -193,13 +222,7 @@ export function mockPostConfirmOrder(cartId, confirmationKey) {
     paymentMethod: cart.paymentMethod === 'transferencia' ? 'TRANSFER' : 'CASH',
     paymentStatus: 'PENDING',
     contact,
-    items: cart.items.map((item) => ({
-      productId: item.productId,
-      productTitle: item.title,
-      quantity: item.quantity,
-      priceCents: item.priceCents,
-      subtotalCents: item.priceCents * item.quantity,
-    })),
+    items: pricedItems,
     createdAt: now,
     updatedAt: now,
   });

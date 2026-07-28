@@ -65,7 +65,11 @@ email: admin@candyland.demo
 password: demo
 ```
 
-Estado mock (stock, carrito, pedidos) vive en `localStorage` (`candyland.mock.v1`) y se reinicia borrando esa clave o recargando con storage limpio.
+La “auth” admin en mock es **solo de demo**: el token se emite al login y se valida contra la lista local de sesiones (`adminTokens`). No es seguridad real; el store vive en el navegador.
+
+Estado mock (stock, carrito, pedidos) vive en `localStorage` (`candyland.mock.v1`) y se reinicia borrando esa clave o recargando con storage limpio. Payloads corruptos se descartan y se regeneran fixtures.
+
+En modo `api`, `VITE_API_URL` es **obligatorio** (fail-closed).
 
 ## Activar backend real (futuro)
 

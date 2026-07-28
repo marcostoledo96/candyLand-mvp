@@ -1,7 +1,7 @@
 // Cliente de API del frontend.
 // Default en Vite: mock (demo sin backend). Modo API: VITE_DATA_MODE=api + VITE_API_URL.
 
-import { isMockMode } from './dataMode.js';
+import { isMockMode, getApiBaseUrl } from './dataMode.js';
 import {
   mockFetchProducts,
   mockFetchCategories,
@@ -17,9 +17,13 @@ import {
 } from '../mocks/publicApi.js';
 
 const ENV = (import.meta as any).env || {};
-const ENV_API = ENV.VITE_API_URL;
 const IS_DEV = !!ENV.DEV;
-export const API_URL = ENV_API ?? '';
+/** @deprecated Prefer getApiBaseUrl() in API mode; kept for diagnostics. */
+export const API_URL = ENV.VITE_API_URL ?? '';
+
+function apiBase(): string {
+  return getApiBaseUrl();
+}
 
 async function fetchWithFallback(input: string, init?: RequestInit): Promise<Response> {
   try {
@@ -48,7 +52,7 @@ export interface ApiProduct {
 export async function fetchProducts(): Promise<ApiProduct[]> {
   if (isMockMode()) return mockFetchProducts();
   try {
-    const res = await fetchWithFallback(`${API_URL}/api/productos`);
+    const res = await fetchWithFallback(`${apiBase()}/api/productos`);
     if (!res.ok) {
       const text = await res.text().catch(() => '');
       throw new Error(`Error al obtener productos: ${res.status} ${text}`);
@@ -92,7 +96,7 @@ export async function getCart(cartId?: string | null): Promise<ApiCart> {
   }
   try {
     const q = cartId ? `?cartId=${encodeURIComponent(cartId)}` : '';
-    const res = await fetchWithFallback(`${API_URL}/api/carrito${q}`);
+    const res = await fetchWithFallback(`${apiBase()}/api/carrito${q}`);
     if (!res.ok) {
       const text = await res.text().catch(() => '');
       throw new Error(`Error al obtener carrito: ${res.status} ${text}`);
@@ -114,7 +118,7 @@ export async function addItemToCart(
   }
   try {
     const q = cartId ? `?cartId=${encodeURIComponent(cartId)}` : '';
-    const res = await fetchWithFallback(`${API_URL}/api/carrito${q}`, {
+    const res = await fetchWithFallback(`${apiBase()}/api/carrito${q}`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ productId, quantity }),
@@ -140,7 +144,7 @@ export async function updateCartItem(
   }
   try {
     const q = cartId ? `?cartId=${encodeURIComponent(cartId)}` : '';
-    const res = await fetchWithFallback(`${API_URL}/api/carrito/${cartItemId}${q}`, {
+    const res = await fetchWithFallback(`${apiBase()}/api/carrito/${cartItemId}${q}`, {
       method: 'PUT',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ quantity }),
@@ -190,8 +194,8 @@ function rethrowMockCheckout(err: unknown): never {
 async function checkoutRequest<T>(path: string, init: RequestInit, retryTransport = true, invalidSuccessIsAmbiguous = false): Promise<T> {
   try {
     const res = retryTransport
-      ? await fetchWithFallback(`${API_URL}${path}`, init)
-      : await fetch(`${API_URL}${path}`, init);
+      ? await fetchWithFallback(`${apiBase()}${path}`, init)
+      : await fetch(`${apiBase()}${path}`, init);
     if (!res.ok) {
       const body = await res.json().catch(async () => ({ error: await res.text().catch(() => '') }));
       throw new CheckoutApiError({ kind: 'http', status: res.status, body });
@@ -280,7 +284,7 @@ export function postConfirmOrder(cartId?: string | null, confirmationKey?: strin
   }
   let request: Promise<Response>;
   try {
-    request = fetch(`${API_URL}/api/orders/confirm${cartId ? `?cartId=${encodeURIComponent(cartId)}` : ''}`, {
+    request = fetch(`${apiBase()}/api/orders/confirm${cartId ? `?cartId=${encodeURIComponent(cartId)}` : ''}`, {
       method: 'POST',
       headers: { 'Idempotency-Key': confirmationKey },
     });
@@ -310,7 +314,7 @@ export async function deleteCartItem(
   }
   try {
     const q = cartId ? `?cartId=${encodeURIComponent(cartId)}` : '';
-    const res = await fetchWithFallback(`${API_URL}/api/carrito/${cartItemId}${q}`, {
+    const res = await fetchWithFallback(`${apiBase()}/api/carrito/${cartItemId}${q}`, {
       method: 'DELETE',
     });
     if (!res.ok) {
@@ -366,7 +370,7 @@ export interface PublicApiError {
 
 export async function fetchCategories(): Promise<ApiCategory[]> {
   if (isMockMode()) return mockFetchCategories();
-  const res = await fetchWithFallback(`${API_URL}/api/categories`);
+  const res = await fetchWithFallback(`${apiBase()}/api/categories`);
   if (!res.ok) {
     const data: PublicApiError = await res.json().catch(async () => ({ error: await res.text().catch(() => '') }));
     throw data;
@@ -379,7 +383,7 @@ async function postPublicForm(
   payload: Record<string, unknown>,
 ): Promise<PublicFormResponse> {
   if (isMockMode()) return mockPostPublicForm();
-  const res = await fetchWithFallback(`${API_URL}${path}`, {
+  const res = await fetchWithFallback(`${apiBase()}${path}`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(payload),
