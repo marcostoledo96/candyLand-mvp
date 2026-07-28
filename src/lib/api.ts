@@ -1,14 +1,30 @@
-// Cliente de API del frontend
-// Nota para el equipo: en dev intentamos pegarle al proxy de Vite (base relativa),
-// y si falla por algún motivo (proxy caído, puerto raro), reintentamos directo al backend local.
-const ENV = (import.meta as any).env || {};
-const ENV_API = ENV.VITE_API_URL;
-const IS_DEV = !!ENV.DEV; // true cuando corre con Vite en desarrollo (cualquier puerto)
-// En producción (Vercel) queremos base relativa para usar las serverless functions /api
-export const API_URL = ENV_API ?? '';
+// Cliente de API del frontend.
+// Default en Vite: mock (demo sin backend). Modo API: VITE_DATA_MODE=api + VITE_API_URL.
 
-// Fetch con fallback: si estamos en DEV y el proxy /api falla por conexión,
-// intenta directo contra http://127.0.0.1:5050 (nuestro backend local por defecto)
+import { isMockMode, getApiBaseUrl } from './dataMode.js';
+import {
+  mockFetchProducts,
+  mockFetchCategories,
+  mockGetCart,
+  mockAddItemToCart,
+  mockUpdateCartItem,
+  mockDeleteCartItem,
+  mockPostCheckout,
+  mockGetPaymentMethods,
+  mockPostPaymentMethod,
+  mockPostConfirmOrder,
+  mockPostPublicForm,
+} from '../mocks/publicApi.js';
+
+const ENV = (import.meta as any).env || {};
+const IS_DEV = !!ENV.DEV;
+/** @deprecated Prefer getApiBaseUrl() in API mode; kept for diagnostics. */
+export const API_URL = ENV.VITE_API_URL ?? '';
+
+function apiBase(): string {
+  return getApiBaseUrl();
+}
+
 async function fetchWithFallback(input: string, init?: RequestInit): Promise<Response> {
   try {
     return await fetch(input, init);
@@ -16,7 +32,7 @@ async function fetchWithFallback(input: string, init?: RequestInit): Promise<Res
     const isNetworkErr = err && (err.name === 'TypeError' || /fetch|network|failed/i.test(String(err.message || '')));
     const isDevRelativeApi = IS_DEV && API_URL === '' && input.startsWith('/api');
     if (isNetworkErr && isDevRelativeApi) {
-  const fallback = `http://127.0.0.1:5050${input}`;
+      const fallback = `http://127.0.0.1:5050${input}`;
       return await fetch(fallback, init);
     }
     throw err;
@@ -34,10 +50,11 @@ export interface ApiProduct {
 }
 
 export async function fetchProducts(): Promise<ApiProduct[]> {
+  if (isMockMode()) return mockFetchProducts();
   try {
-  const res = await fetchWithFallback(`${API_URL}/api/productos`);
+    const res = await fetchWithFallback(`${apiBase()}/api/productos`);
     if (!res.ok) {
-      const text = await res.text().catch(() => "");
+      const text = await res.text().catch(() => '');
       throw new Error(`Error al obtener productos: ${res.status} ${text}`);
     }
     return res.json();
@@ -46,7 +63,6 @@ export async function fetchProducts(): Promise<ApiProduct[]> {
   }
 }
 
-// Carrito API
 export interface ApiCartItem {
   id: number;
   productId: number;
@@ -65,12 +81,24 @@ export interface ApiCart {
   totalCents: number;
 }
 
+function rethrowMockCartError(err: unknown): never {
+  if (err && typeof err === 'object' && 'status' in err && 'body' in err) {
+    const body = (err as { body?: { error?: string } }).body;
+    throw { error: body?.error || 'Error en el carrito' };
+  }
+  throw err;
+}
+
 export async function getCart(cartId?: string | null): Promise<ApiCart> {
+  if (isMockMode()) {
+    try { return await mockGetCart(cartId); }
+    catch (err) { rethrowMockCartError(err); }
+  }
   try {
-    const q = cartId ? `?cartId=${encodeURIComponent(cartId)}` : "";
-  const res = await fetchWithFallback(`${API_URL}/api/carrito${q}`);
+    const q = cartId ? `?cartId=${encodeURIComponent(cartId)}` : '';
+    const res = await fetchWithFallback(`${apiBase()}/api/carrito${q}`);
     if (!res.ok) {
-      const text = await res.text().catch(() => "");
+      const text = await res.text().catch(() => '');
       throw new Error(`Error al obtener carrito: ${res.status} ${text}`);
     }
     return res.json();
@@ -82,17 +110,21 @@ export async function getCart(cartId?: string | null): Promise<ApiCart> {
 export async function addItemToCart(
   productId: number,
   quantity = 1,
-  cartId?: string | null
+  cartId?: string | null,
 ): Promise<ApiCart> {
+  if (isMockMode()) {
+    try { return await mockAddItemToCart(productId, quantity, cartId); }
+    catch (err) { rethrowMockCartError(err); }
+  }
   try {
-    const q = cartId ? `?cartId=${encodeURIComponent(cartId)}` : "";
-    const res = await fetchWithFallback(`${API_URL}/api/carrito${q}`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
+    const q = cartId ? `?cartId=${encodeURIComponent(cartId)}` : '';
+    const res = await fetchWithFallback(`${apiBase()}/api/carrito${q}`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ productId, quantity }),
     });
     if (!res.ok) {
-      const text = await res.text().catch(() => "");
+      const text = await res.text().catch(() => '');
       throw new Error(`Error al agregar al carrito: ${res.status} ${text}`);
     }
     return res.json();
@@ -104,17 +136,21 @@ export async function addItemToCart(
 export async function updateCartItem(
   cartItemId: number,
   quantity: number,
-  cartId?: string | null
+  cartId?: string | null,
 ): Promise<ApiCart> {
+  if (isMockMode()) {
+    try { return await mockUpdateCartItem(cartItemId, quantity, cartId); }
+    catch (err) { rethrowMockCartError(err); }
+  }
   try {
-    const q = cartId ? `?cartId=${encodeURIComponent(cartId)}` : "";
-    const res = await fetchWithFallback(`${API_URL}/api/carrito/${cartItemId}${q}`, {
-      method: "PUT",
-      headers: { "Content-Type": "application/json" },
+    const q = cartId ? `?cartId=${encodeURIComponent(cartId)}` : '';
+    const res = await fetchWithFallback(`${apiBase()}/api/carrito/${cartItemId}${q}`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ quantity }),
     });
     if (!res.ok) {
-      const text = await res.text().catch(() => "");
+      const text = await res.text().catch(() => '');
       throw new Error(`Error al modificar item: ${res.status} ${text}`);
     }
     return res.json();
@@ -123,7 +159,6 @@ export async function updateCartItem(
   }
 }
 
-// Checkout API
 export interface CheckoutPayload {
   nombre: string;
   telefono: string;
@@ -148,11 +183,19 @@ export class CheckoutApiError extends Error {
   }
 }
 
+function rethrowMockCheckout(err: unknown): never {
+  if (err && typeof err === 'object' && 'status' in err && 'body' in err) {
+    const mockErr = err as { status: number; body: Record<string, unknown> };
+    throw new CheckoutApiError({ kind: 'http', status: mockErr.status, body: mockErr.body || {} });
+  }
+  throw new CheckoutApiError({ kind: 'transport' });
+}
+
 async function checkoutRequest<T>(path: string, init: RequestInit, retryTransport = true, invalidSuccessIsAmbiguous = false): Promise<T> {
   try {
     const res = retryTransport
-      ? await fetchWithFallback(`${API_URL}${path}`, init)
-      : await fetch(`${API_URL}${path}`, init);
+      ? await fetchWithFallback(`${apiBase()}${path}`, init)
+      : await fetch(`${apiBase()}${path}`, init);
     if (!res.ok) {
       const body = await res.json().catch(async () => ({ error: await res.text().catch(() => '') }));
       throw new CheckoutApiError({ kind: 'http', status: res.status, body });
@@ -171,35 +214,42 @@ async function checkoutRequest<T>(path: string, init: RequestInit, retryTranspor
 
 export async function postCheckout(
   payload: CheckoutPayload,
-  cartId?: string | null
+  cartId?: string | null,
 ) {
-  const q = cartId ? `?cartId=${encodeURIComponent(cartId)}` : "";
+  if (isMockMode()) {
+    try { return await mockPostCheckout(payload, cartId); }
+    catch (err) { rethrowMockCheckout(err); }
+  }
+  const q = cartId ? `?cartId=${encodeURIComponent(cartId)}` : '';
   return checkoutRequest<{ cartId?: string }>(`/api/checkout${q}`, {
-    method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(payload),
+    method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload),
   });
 }
 
-// Método de pago
 export type PaymentMethodChoice = 'efectivo' | 'transferencia';
 export type PaymentMethodCode = 'CASH' | 'TRANSFER';
 export interface BankDetails { alias: string; cbu: string; titular: string; }
 export interface PaymentMethodOptions { methods: PaymentMethodCode[]; bank: BankDetails | null; }
 
 export function getPaymentMethods(): Promise<PaymentMethodOptions> {
+  if (isMockMode()) return mockGetPaymentMethods();
   return checkoutRequest('/api/payment-method', { method: 'GET' });
 }
 
 export async function postPaymentMethod(
   method: PaymentMethodChoice,
-  cartId?: string | null
+  cartId?: string | null,
 ) {
-  const q = cartId ? `?cartId=${encodeURIComponent(cartId)}` : "";
+  if (isMockMode()) {
+    try { return await mockPostPaymentMethod(method, cartId); }
+    catch (err) { rethrowMockCheckout(err); }
+  }
+  const q = cartId ? `?cartId=${encodeURIComponent(cartId)}` : '';
   return checkoutRequest<{ cartId?: string; method: PaymentMethodChoice; bank?: BankDetails | null }>(`/api/payment-method${q}`, {
-    method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ method }),
+    method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ method }),
   });
 }
 
-// Confirmar orden
 export interface ConfirmOrderResponseItem {
   productId: number;
   quantity: number;
@@ -225,30 +275,50 @@ export interface ConfirmOrderResponse {
 }
 
 export function postConfirmOrder(cartId?: string | null, confirmationKey?: string): Promise<ConfirmOrderResponse> {
-  const q = cartId ? `?cartId=${encodeURIComponent(cartId)}` : "";
-  if (!confirmationKey) return Promise.reject(new CheckoutApiError({ kind: "pre-dispatch" }));
-  if (typeof navigator !== "undefined" && navigator.onLine === false) return Promise.reject(new CheckoutApiError({ kind: "pre-dispatch" }));
+  if (!confirmationKey) return Promise.reject(new CheckoutApiError({ kind: 'pre-dispatch' }));
+  if (typeof navigator !== 'undefined' && navigator.onLine === false) {
+    return Promise.reject(new CheckoutApiError({ kind: 'pre-dispatch' }));
+  }
+  if (isMockMode()) {
+    return mockPostConfirmOrder(cartId, confirmationKey).catch((err) => rethrowMockCheckout(err));
+  }
   let request: Promise<Response>;
-  try { request = fetch(`${API_URL}/api/orders/confirm${q}`, { method: "POST", headers: { "Idempotency-Key": confirmationKey } }); }
-  catch { return Promise.reject(new CheckoutApiError({ kind: "pre-dispatch" })); }
+  try {
+    request = fetch(`${apiBase()}/api/orders/confirm${cartId ? `?cartId=${encodeURIComponent(cartId)}` : ''}`, {
+      method: 'POST',
+      headers: { 'Idempotency-Key': confirmationKey },
+    });
+  } catch {
+    return Promise.reject(new CheckoutApiError({ kind: 'pre-dispatch' }));
+  }
   return request.then(async (res) => {
-    if (!res.ok) throw new CheckoutApiError({ kind: "http", status: res.status, body: await res.json().catch(async () => ({ error: await res.text().catch(() => "") })) });
+    if (!res.ok) {
+      throw new CheckoutApiError({
+        kind: 'http',
+        status: res.status,
+        body: await res.json().catch(async () => ({ error: await res.text().catch(() => '') })),
+      });
+    }
     try { return await res.json(); }
-    catch { throw new CheckoutApiError({ kind: "invalid-success" }); }
-  }, () => { throw new CheckoutApiError({ kind: "transport" }); });
+    catch { throw new CheckoutApiError({ kind: 'invalid-success' }); }
+  }, () => { throw new CheckoutApiError({ kind: 'transport' }); });
 }
 
 export async function deleteCartItem(
   cartItemId: number,
-  cartId?: string | null
+  cartId?: string | null,
 ): Promise<ApiCart> {
+  if (isMockMode()) {
+    try { return await mockDeleteCartItem(cartItemId, cartId); }
+    catch (err) { rethrowMockCartError(err); }
+  }
   try {
-    const q = cartId ? `?cartId=${encodeURIComponent(cartId)}` : "";
-    const res = await fetchWithFallback(`${API_URL}/api/carrito/${cartItemId}${q}`, {
-      method: "DELETE",
+    const q = cartId ? `?cartId=${encodeURIComponent(cartId)}` : '';
+    const res = await fetchWithFallback(`${apiBase()}/api/carrito/${cartItemId}${q}`, {
+      method: 'DELETE',
     });
     if (!res.ok) {
-      const text = await res.text().catch(() => "");
+      const text = await res.text().catch(() => '');
       throw new Error(`Error al eliminar item: ${res.status} ${text}`);
     }
     return res.json();
@@ -256,9 +326,6 @@ export async function deleteCartItem(
     throw { error: `No se pudo conectar al backend (${API_URL}). Verificá que el servidor esté corriendo.` };
   }
 }
-
-// --- Public routes API (categories + public forms) ---
-// Contracts match backend/routes/public.js (merged slice 7b).
 
 export interface ApiCategory {
   id: number;
@@ -296,16 +363,16 @@ export interface FranchiseLeadPayload {
   message?: string;
 }
 
-// Shared normalized error shape for public endpoints.
 export interface PublicApiError {
   error: string;
   errors?: string[];
 }
 
 export async function fetchCategories(): Promise<ApiCategory[]> {
-  const res = await fetchWithFallback(`${API_URL}/api/categories`);
+  if (isMockMode()) return mockFetchCategories();
+  const res = await fetchWithFallback(`${apiBase()}/api/categories`);
   if (!res.ok) {
-    const data: PublicApiError = await res.json().catch(async () => ({ error: await res.text().catch(() => "") }));
+    const data: PublicApiError = await res.json().catch(async () => ({ error: await res.text().catch(() => '') }));
     throw data;
   }
   return res.json();
@@ -315,13 +382,14 @@ async function postPublicForm(
   path: string,
   payload: Record<string, unknown>,
 ): Promise<PublicFormResponse> {
-  const res = await fetchWithFallback(`${API_URL}${path}`, {
+  if (isMockMode()) return mockPostPublicForm();
+  const res = await fetchWithFallback(`${apiBase()}${path}`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(payload),
   });
   if (!res.ok) {
-    const data: PublicApiError = await res.json().catch(async () => ({ error: await res.text().catch(() => "") }));
+    const data: PublicApiError = await res.json().catch(async () => ({ error: await res.text().catch(() => '') }));
     throw data;
   }
   return res.json();

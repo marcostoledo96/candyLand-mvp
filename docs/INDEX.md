@@ -1,11 +1,12 @@
 # Índice de documentación — CandyLand v2
 
-## Backend y deploy
+## Backend, demo y deploy
 
-- `DECISIONES_CERRADAS.md` — decisiones de producto/arquitectura ya cerradas.
-- `DEPLOY_RAILWAY_VERCEL.md` — current Railway backend + PostgreSQL and Vercel frontend release contract, approval tiers, redacted public smoke, and rollback boundaries.
-- `EMAILS_PEDIDOS.md` — servicio de emails de pedidos: noop por defecto y Resend vía `fetch` sin SDK.
-- `AUTENTICACION.md` — auth admin: JWT sessionStorage, `/api/admin/me` bootstrap, 401 clear/redirect, logout. Slice parcial (auth + productos + categorías + pedidos).
+- `DECISIONES_CERRADAS.md` — decisiones de producto/arquitectura (incluye pivot mock-first 2026-07-28).
+- `DEMO_MOCK.md` — **contrato vigente** de demo Vercel sin backend/DB; modo API opcional.
+- `DEPLOY_RAILWAY_VERCEL.md` — contrato histórico / modo API (Railway + PostgreSQL + Vercel). Diferido para el portfolio demo.
+- `EMAILS_PEDIDOS.md` — emails de pedidos (modo API): noop por defecto y Resend vía `fetch` sin SDK.
+- `AUTENTICACION.md` — auth admin JWT (modo API); en demo se usa sesión mock.
 
 ## Trabajo asistido por IA
 
@@ -14,8 +15,8 @@
 
 ## Planificación
 
-- `PLANIFICACION_CANDYLAND_V2.md` — planificación general de v2.
-- `PLAN_DE_IMPLEMENTACION_DETALLADO.md` — fases y tareas de implementación.
+- `PLANIFICACION_CANDYLAND_V2.md` — planificación general de v2 (fase 0 = demo mock-first).
+- `PLAN_DE_IMPLEMENTACION_DETALLADO.md` — fases históricas; contrastar con `DEMO_MOCK.md` antes de ejecutar.
 - `AUDITORIA_INICIAL.md` — auditoría inicial del estado del proyecto.
 - `MAPA_REFERENCIA.md` — mapa de referencia visual/assets de Macarena.
 - `PROMPT_MAESTRO_OPENCODE.md` — prompt maestro de trabajo.

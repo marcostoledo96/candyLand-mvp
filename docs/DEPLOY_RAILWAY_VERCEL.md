@@ -1,11 +1,15 @@
 # Deploy Railway + Vercel — CandyLand v2
 
+> **Nota 2026-07-28:** el objetivo vigente de portfolio es **demo mock-first** (`docs/DEMO_MOCK.md`).  
+> Este documento aplica al **modo API opcional** (`VITE_DATA_MODE=api`). No es requisito para el deploy demo en Vercel.
+
 ## Objetivo
 
 - Frontend en Vercel.
-- Backend Node/Express en Railway.
-- PostgreSQL en Railway.
-- Prisma para schema/migraciones.
+- Backend Node/Express en Railway (modo API).
+- PostgreSQL en Railway (modo API).
+- Prisma para schema/migraciones (modo API).
+
 
 ## Railway — backend
 
