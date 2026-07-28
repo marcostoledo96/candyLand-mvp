@@ -20,15 +20,19 @@
 | Admin login | PASS | Demo credentials note visible; session authorized |
 | Admin products | PASS | Stock 49 shown for Caramelos Frutales |
 | Admin orders | PASS | `DEMO-00001` listed as Pendiente / Efectivo |
-| Admin cancel + stock restore (UI) | SKIPPED | Interrupted waiting on browser approval; covered by unit tests below |
+| Admin cancel + stock restore (UI) | SKIPPED | Interrupted waiting on browser approval |
+| Admin cancel + stock restore (unit) | PASS | `test/demo-mock.test.mjs` — cancel restores +1 stock; forged `.mock` tokens rejected |
 
 No secrets, response bodies, or PII beyond demo labels were recorded.
 
 ## Automated checks (repository)
 
-- `npm run test:demo-mock` — 4/4 including cancel→stock restore and idempotency  
-- Full `npm test` — 85 pass, 1 expected skip (historical RED)  
-- Production bundle contains mock fixtures (`Frutales`, `candyland.mock`); no `railway.app` in client JS  
+Re-verified 2026-07-28 during PR #20 audit:
+
+- `npm run test:demo-mock` — **4/4**
+- Full `npm test` — **85 pass**, 1 expected skip (historical RED), **0 fail**
+- `npm run build` — PASS
+- Production bundle contains mock fixtures (`Frutales`, `candyland.mock`); no `railway.app` in client JS
 
 ## Deferred (parent stays open)
 
