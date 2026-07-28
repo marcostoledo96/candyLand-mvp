@@ -1,7 +1,8 @@
 # Demo mock-first — CandyLand v2
 
 **Fecha:** 2026-07-28  
-**Estado:** decisión de producto vigente para el objetivo portfolio/demo.
+**Estado:** contrato vigente del portfolio/demo.  
+**OpenSpec:** change `2026-06-candyland-v2` **CLOSED** (demo-only final; ver `archive-parent-demo-only.md`).
 
 ## Objetivo
 
@@ -49,7 +50,7 @@ Persistencia mock sugerida:
 
 - La carpeta `backend/` **se conserva** como implementación de referencia para el modo `api`.
 - Prisma, migraciones, Railway y PostgreSQL **no son requisito** del deploy demo.
-- OpenSpec parent `2026-06-candyland-v2` **no se cierra** por este pivot: la evidencia productiva Railway/Vercel API queda **diferida** (modo `api`), no descartada como código.
+- OpenSpec `2026-06-candyland-v2` está **CLOSED** como demo-only final. Railway/API no es gate del portfolio; el código `backend/` se conserva para un change futuro si se reactiva el modo `api`.
 
 ## Deploy demo
 

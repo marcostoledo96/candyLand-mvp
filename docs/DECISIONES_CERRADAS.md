@@ -1,17 +1,19 @@
 # Decisiones cerradas — CandyLand v2
 
 Fecha original: 2026-06-29  
-**Superseded / actualizado:** 2026-07-28 (pivot demo mock-first)
+**Superseded / actualizado:** 2026-07-28 (pivot demo mock-first)  
+**Cierre de change:** 2026-07-28 — OpenSpec `2026-06-candyland-v2` **CLOSED** (demo-only final)
 
 ## Pivot vigente (2026-07-28)
 
-El objetivo inmediato de portfolio/demo es:
+El objetivo de portfolio/demo es:
 
 1. **Demo frontend-only en Vercel** con datos **mock**.
 2. **Sin dependencia** de Railway, PostgreSQL ni backend en runtime de demo.
 3. Conservar `backend/` + Prisma como **código listo** para modo API opcional.
 4. Selección de fuente de datos por configuración: `VITE_DATA_MODE=mock|api` (+ `VITE_API_URL` sólo en modo `api`).
 5. Documentación canónica del pivot: `docs/DEMO_MOCK.md`.
+6. **Cierre de producto:** la demo mock en Vercel es el entregable final del change `2026-06-candyland-v2`. La evidencia Railway/API (PD-01..PD-07 provider) **no es gate de cierre**; queda fuera de alcance hasta un change nuevo.
 
 Las respuestas 1–4, 6–8 y 23 del bloque histórico siguen válidas para el **modo API opcional**, no como requisito del deploy demo.
 
@@ -50,12 +52,9 @@ Las respuestas 1–4, 6–8 y 23 del bloque histórico siguen válidas para el *
 - `VITE_API_URL` sólo aplica con `VITE_DATA_MODE=api`.
 - Neon sigue deprecado.
 - `api/` serverless de Vercel permanece deprecado; no reactivar como backend de demo.
-- OpenSpec parent `2026-06-candyland-v2` no se cierra por este pivot; evidencia Railway productiva queda diferida al modo API.
+- OpenSpec parent `2026-06-candyland-v2` está **CLOSED** por decisión demo-only final (`archive-parent-demo-only.md`). Un revive de Railway/API abre un change nuevo.
 
-## Pendientes de implementación (post-plan)
+## Pendientes fuera de este change
 
-- Introducir capa adapter mock/api sin romper pantallas existentes.
-- Fixtures de productos/categorías alineados al DTO público actual.
-- Admin + checkout mock con estados loading/error/empty/success.
-- Actualizar README/AGENTS/deploy docs (este archivo + `DEMO_MOCK.md` ya reflejan la decisión).
-- No borrar `backend/` ni migraciones en el pivot de planificación.
+- Modo API / Railway: sólo si se decide reactivarlo (nuevo OpenSpec change + `DEPLOY_RAILWAY_VERCEL.md`).
+- No borrar `backend/` ni migraciones; siguen siendo el camino opcional.

@@ -21,7 +21,8 @@
 - `MAPA_REFERENCIA.md` — mapa de referencia visual/assets de Macarena.
 - `PROMPT_MAESTRO_OPENCODE.md` — prompt maestro de trabajo.
 
-## Evidencia OpenSpec (change abierta)
+## Evidencia OpenSpec (change CLOSED — demo-only final)
 
-- `../openspec/changes/2026-06-candyland-v2/verify-demo-mock-first.md` — smoke Vercel mock (PRs #19–#21); Railway diferido; parent abierto.
-- `../openspec/changes/2026-06-candyland-v2/archive-demo-mock-first.md` — archivo del slice demo mock-first; PD-08 parcial; cierre del parent pendiente de decisión.
+- `../openspec/changes/2026-06-candyland-v2/archive-parent-demo-only.md` — **cierre del parent** por supersesión de producto (2026-07-28).
+- `../openspec/changes/2026-06-candyland-v2/verify-demo-mock-first.md` — smoke Vercel mock (PRs #19–#21).
+- `../openspec/changes/2026-06-candyland-v2/archive-demo-mock-first.md` — archivo del slice demo mock-first.

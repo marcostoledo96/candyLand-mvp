@@ -1,14 +1,14 @@
 # Verify — Demo mock-first (post-merge production smoke)
 
 **Date:** 2026-07-28 (updated after README PR #21)  
-**Parent:** `2026-06-candyland-v2` (remains open)  
+**Parent:** `2026-06-candyland-v2` (**CLOSED** — demo-only final)  
 **Deploy:** `https://candy-land-mvp.vercel.app/` on `main` @ `642c404` (includes PRs #19–#21)  
 **Mode:** `VITE_DATA_MODE` default mock (no Railway/DB required)
 
 ## Verdict
 
 **PASS WITH NOTES** for the portfolio demo path.  
-Slice archived in `archive-demo-mock-first.md` (parent still open).
+Slice archived in `archive-demo-mock-first.md`. Parent later **CLOSED** as demo-only final (`archive-parent-demo-only.md`).
 
 ## Production UI smoke (browser)
 
@@ -40,14 +40,15 @@ Re-verified 2026-07-28 during PR #20 audit; README path reconciled in PR #21:
 - Root `README.md` leads with mock-first onboarding (install, admin demo, `candyland.mock.v1` reset, API optional with seed/`create-admin`/prod migrate rules).
 - `docs/DEMO_MOCK.md`, `docs/DECISIONES_CERRADAS.md`, `docs/INDEX.md`.
 
-## Deferred (parent stays open)
+## Closure follow-up
 
-- Railway provider config / migrate / API-mode QA (`tasks.md` item 3.4)
-- Full PD-08 parent closure until API path evidence exists **or** product decides demo-only is final
+- Railway/API QA waived for parent closure (`tasks.md` 3.4 / 3.8; `archive-parent-demo-only.md`).
+- Revive of API mode = new OpenSpec change, not a reopen of this parent.
 
 ## Source of truth
 
 - `docs/DEMO_MOCK.md`
-- `docs/DECISIONES_CERRADAS.md` (pivot 2026-07-28)
+- `docs/DECISIONES_CERRADAS.md` (pivot + demo-only closure 2026-07-28)
 - `archive-demo-mock-first.md`
-- PR #19 merge `07b7690`; docs PRs #20 / #21; tip `642c404`
+- `archive-parent-demo-only.md`
+- PR #19 merge `07b7690`; docs PRs #20 / #21 / #22; tip at closure prep `830c0f8`
