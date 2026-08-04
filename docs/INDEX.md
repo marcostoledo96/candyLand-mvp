@@ -10,6 +10,7 @@
 
 ## Trabajo asistido por IA
 
+- `HANDOFF_CURSOR_OPENCODE.md` — **empezar aquí en OpenCode**: estado post-Cursor, arquitectura mock, PRs #19–#23, prompt listo.
 - `CODEGRAPH_INIT.md` — cómo inicializar y consultar CodeGraph localmente.
 - `ENGRAM_GUIDE.md` — qué guardar en memoria persistente y cómo usar Engram.
 
@@ -19,7 +20,8 @@
 - `PLAN_DE_IMPLEMENTACION_DETALLADO.md` — fases históricas; contrastar con `DEMO_MOCK.md` antes de ejecutar.
 - `AUDITORIA_INICIAL.md` — auditoría inicial del estado del proyecto.
 - `MAPA_REFERENCIA.md` — mapa de referencia visual/assets de Macarena.
-- `PROMPT_MAESTRO_OPENCODE.md` — prompt maestro de trabajo.
+- `PROMPT_MAESTRO_OPENCODE.md` — prompt maestro histórico (preferí `HANDOFF_CURSOR_OPENCODE.md` + `DEMO_MOCK.md`).
+- `HANDOFF_CURSOR_OPENCODE.md` — handoff Cursor→OpenCode (2026-08).
 
 ## Evidencia OpenSpec (change CLOSED — demo-only final)
 
