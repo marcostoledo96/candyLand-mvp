@@ -3,9 +3,9 @@
 ## Result
 
 - **Status:** success with deferred Railway path
-- **Parent:** `2026-06-candyland-v2` remains **open**
+- **Parent:** `2026-06-candyland-v2` — later **CLOSED** as demo-only final (`archive-parent-demo-only.md`)
 - **Mode:** documentation + prior code already on `main` (PRs #19–#21)
-- **Scope:** reconcile the 2026-07-28 mock-first pivot for the Vercel portfolio demo; do **not** close the parent
+- **Scope:** reconcile the 2026-07-28 mock-first pivot for the Vercel portfolio demo (parent closure is a separate archive)
 
 ## What shipped (already on main)
 
@@ -29,13 +29,11 @@
 |---|---|---|
 | PD-01..PD-07 provider writes | N/A for mock deploy | **BLOCKED / deferred** (`tasks.md` 3.4) |
 | PD-05 public API smoke | Not required for mock Vercel | Optional when API mode is revived |
-| PD-08 | **Partial:** mock path + docs reconciled in this archive | Parent **stays open** until API evidence **or** explicit product decision that demo-only is final |
+| PD-08 | Mock path + docs reconciled here; **completed** by `archive-parent-demo-only.md` | Parent **CLOSED** — Railway/API waived by product supersession |
 
-## Explicit non-closure
+## Parent closure
 
-Per `specs/ops/production-deploy-qa/spec.md` PD-08: parent MUST NOT close while required production (API-mode) evidence for PD-01..PD-07 is absent, unless product supersedes that gate.
-
-**Decision still needed from product:** keep parent open for future Railway QA, **or** declare demo-only final and close with a recorded supersession.
+Product chose **demo-only final** after PR #22. See `archive-parent-demo-only.md`.
 
 ## Source of truth
 

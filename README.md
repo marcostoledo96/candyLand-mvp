@@ -77,7 +77,7 @@ No se commitean `.env`. Ejemplos: `.env.example` (frontend) y `backend/.env.exam
 ├── src/mocks/     # Fixtures y store demo
 ├── backend/       # Express + Prisma (modo API opcional)
 ├── docs/          # DEMO_MOCK, decisiones, deploy Railway
-├── openspec/      # Change abierta 2026-06-candyland-v2
+├── openspec/      # Change 2026-06-candyland-v2 CLOSED (demo-only)
 └── vercel.json    # Frontend-only
 ```
 

@@ -1,12 +1,13 @@
 schema: spec-driven
 
 context: |
-  Proyecto: CandyLand MVP v2.
+  Proyecto: CandyLand MVP v2 (portfolio).
+  Demo vigente: Vercel frontend-only con VITE_DATA_MODE=mock (sin Railway/DB en runtime).
   Stack frontend: React + Vite + TypeScript + React Router.
-  Stack backend: Node.js + Express + Prisma.
-  Base de datos: PostgreSQL exclusivamente en Railway.
-  Deploy frontend: Vercel.
-  Deploy backend: Railway, root directory backend/.
+  Backend opcional: Node.js + Express + Prisma en backend/ (VITE_DATA_MODE=api + VITE_API_URL).
+  Base de datos: PostgreSQL en Railway sólo en modo API opcional.
+  Deploy demo: Vercel. Deploy API opcional: Railway, root directory backend/.
+  OpenSpec change 2026-06-candyland-v2: CLOSED (demo-only final, 2026-07-28).
   Proyecto principal local: /home/marcos/Escritorio/CandyLand/CandyLand/candyLand-mvp
   Referencia visual/assets local: /home/marcos/Escritorio/CandyLand/CandyLand_Macarena/tienda-candyland
   Dominio frontend actual: https://candy-land-mvp.vercel.app/

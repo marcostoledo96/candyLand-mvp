@@ -1,7 +1,7 @@
 # Planificación CandyLand MVP v2 — React + demo mock (backend opcional)
 
 **Fecha:** 2026-06-29  
-**Actualizado:** 2026-07-28 — pivot **demo mock-first**  
+**Actualizado:** 2026-07-28 — pivot **demo mock-first**; OpenSpec parent **CLOSED** (demo-only final)  
 **Proyecto principal:** `marcostoledo96/candyLand-mvp`  
 **Proyecto de referencia visual/assets:** `macarenadaianaleiva/tienda-candyland`  
 **Deploy actual:** `https://candy-land-mvp.vercel.app/`  
@@ -22,7 +22,7 @@ Objetivo: sitio usable en Vercel sin Railway.
 3. [x] Fixtures mock + persistencia de sesión (`localStorage`/memoria) para carrito, stock demo y pedidos admin.
 4. [x] Deploy Vercel sólo frontend; sin `DATABASE_URL` ni `VITE_API_URL` obligatorios.
 5. [x] Documentar cómo reactivar backend real sin reescribir UI (`README`, `DEMO_MOCK.md`).
-6. [~] Reconciliar OpenSpec del pivot (`archive-demo-mock-first.md`, PD-08 parcial). **Parent sigue abierto** hasta evidencia Railway/API **o** decisión explícita de demo-only final. QA Railway queda diferida.
+6. [x] OpenSpec `2026-06-candyland-v2` **CLOSED** por decisión demo-only final (`archive-parent-demo-only.md`). QA Railway/API queda fuera de este change (opcional, change nuevo).
 
 Fuera de alcance inmediato: migraciones productivas, seed, CORS Railway, smoke API remoto, write QA contra Postgres.
 

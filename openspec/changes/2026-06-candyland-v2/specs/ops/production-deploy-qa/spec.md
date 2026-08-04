@@ -108,7 +108,7 @@ Before promotion, the release record MUST define tested rollback actions for mig
 
 ### Requirement: PD-08 Reconciliation and Parent Closure
 
-Final documentation and OpenSpec MUST reconcile deployed configuration, evidence, rollback status, and deferred approvals. Documentation and evidence MUST name provider variables only, never values. The parent change MUST NOT close until production evidence satisfies PD-01 through PD-07.
+Final documentation and OpenSpec MUST reconcile deployed configuration, evidence, rollback status, and deferred approvals. Documentation and evidence MUST name provider variables only, never values. The parent change MUST NOT close until production evidence satisfies PD-01 through PD-07, **unless product explicitly supersedes that gate** (demo-only final).
 
 #### Scenario: Closure review
 - GIVEN all required production evidence is available
@@ -119,3 +119,8 @@ Final documentation and OpenSpec MUST reconcile deployed configuration, evidence
 - GIVEN any required production evidence or approval is absent
 - WHEN closure is reviewed
 - THEN the parent change remains open with the missing condition recorded
+
+#### Scenario: Demo-only product supersession
+- GIVEN product declares the Vercel mock portfolio demo as the final deliverable
+- WHEN documentation records the supersession (`archive-parent-demo-only.md`) and waives Railway/API provider evidence
+- THEN the parent change MAY close without PD-01..PD-07 provider execution; API revive requires a new change
